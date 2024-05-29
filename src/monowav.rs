@@ -16,7 +16,6 @@ impl MonoWav {
         let wavfile = File::create(wavfilename).unwrap();
         let mut wav = BufWriter::new(wavfile);
 
-        // TODO: add header
         Self::write_master_chunk(&mut wav);
         Self::write_fmt_chunk(&mut wav);
         Self::write_data_chunk(&mut wav);
