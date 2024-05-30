@@ -14,7 +14,7 @@ fn main() {
     glot.set_freq(mtof(60.));
 
     for _ in 0..(sr as f32 * 2.0) as usize {
-        let s = glot.tick();
+        let s = glot.tick() * 0.7;
         wav.tick(s);
     }
 }
