@@ -233,7 +233,6 @@ impl Glot {
             let fpos = self.env_pos * (GLOT_ENV_SIZE as f32 - 2.0);
             let ipos = fpos as usize;
             let fpos = fpos - ipos as f32;
-            println!("i: {}, f: {}", ipos, fpos);
 
             env =
                 (1.0 - fpos) * self.hanning[ipos] +
