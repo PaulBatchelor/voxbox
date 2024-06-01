@@ -206,6 +206,9 @@ impl Glot {
 
         // noise filtering: lu says 4kHz highpass cutoff
         let noise = self.asp_hpfilt.tick(noise);
+
+        // boost the gain a little bit... it seems a little quiet?
+        let noise = noise * 3.0;
     
 
         // amplitude modulation
@@ -252,5 +255,6 @@ impl Glot {
         out += env;
         out
     }
+
 }
 

@@ -14,6 +14,8 @@ pub struct Tract {
 
     areas: Vec<f32>,
     reflections: Vec<f32>,
+
+    // TODO: move diameters to another interface?
     diams: Vec<f32>,
 
     // anti-aliasing (aliasing supression)
@@ -67,6 +69,7 @@ impl Tract {
         self.yt1 = 0.0;
     }
 
+    // TODO: maybe take in diameters as an argument?
     fn compute_areas_from_diams(&mut self) {
         let a = &mut self.areas;
         let d = &mut self.diams;
