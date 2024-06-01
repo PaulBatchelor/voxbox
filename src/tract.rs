@@ -70,6 +70,7 @@ impl Tract {
     }
 
     // TODO: maybe take in diameters as an argument?
+    #[allow(dead_code)]
     fn compute_areas_from_diams(&mut self) {
         let a = &mut self.areas;
         let d = &mut self.diams;
@@ -133,7 +134,7 @@ impl Tract {
     pub fn tick(&mut self, sig: f32) -> f32 {
         let mut out = 0.0;
 
-        for i in 0 .. self.oversample {
+        for _ in 0 .. self.oversample {
             //self.compute_areas_from_diams();
             self.generate_reflection_coefficients();
             self.compute_scattering_junctions(sig);
