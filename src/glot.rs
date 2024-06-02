@@ -46,7 +46,7 @@ impl Glot {
             freq: 140.0,
             onedsr: 1.0 / (sr as f32),
             time_in_waveform: 0.0,
-            lag: 0.7, // 7% of period (max 15)
+            lag: 0.07, // 7% of period (max 15)
             noise_floor: 0.003,
             env_size: 0.6, // 40-80 percent
             aspiration: 0.3,
@@ -207,9 +207,6 @@ impl Glot {
         // noise filtering: lu says 4kHz highpass cutoff
         let noise = self.asp_hpfilt.tick(noise);
 
-        // boost the gain a little bit... it seems a little quiet?
-        let noise = noise * 3.0;
-    
 
         // amplitude modulation
         // This is a scaled pitch-synchronous Hanning window,
@@ -236,7 +233,6 @@ impl Glot {
             let fpos = self.env_pos * (GLOT_ENV_SIZE as f32 - 2.0);
             let ipos = fpos as usize;
             let fpos = fpos - ipos as f32;
-
             env =
                 (1.0 - fpos) * self.hanning[ipos] +
                 fpos * self.hanning[ipos + 1];
@@ -257,4 +253,3 @@ impl Glot {
     }
 
 }
-

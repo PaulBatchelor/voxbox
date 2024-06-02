@@ -3,9 +3,11 @@ mod phasor;
 mod glot;
 mod butterworth;
 mod tract;
+mod dcblocker;
 
 // TODO how to use this for internal testing only in examples?
 pub use monowav::*;
 pub use phasor::*;
 pub use glot::*;
 pub use tract::*;
+pub use dcblocker::*;
