@@ -4,10 +4,11 @@ mod glot;
 mod butterworth;
 mod tract;
 mod dcblocker;
+mod smoother;
 
-// TODO how to use this for internal testing only in examples?
 pub use monowav::*;
 pub use phasor::*;
 pub use glot::*;
 pub use tract::*;
 pub use dcblocker::*;
+pub use smoother::*;
