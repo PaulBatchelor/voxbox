@@ -2,6 +2,13 @@ use std::f32::consts::PI;
 
 const SPEED_OF_SOUND: f32 = 343.0; /* m/s @ 20C */
 
+pub struct Nose {
+    left: Vec<f32>,
+    right: Vec<f32>,
+    areas: Vec<f32>,
+    reflections: Vec<f32>,
+}
+
 pub struct Tract {
     // TODO: how to use dynbox instead?
     // left/right delay waveguides
@@ -16,6 +23,7 @@ pub struct Tract {
     reflections: Vec<f32>,
 
     // TODO: move diameters to another interface?
+    // task id: create-diams-interface
     diams: Vec<f32>,
 
     // anti-aliasing (aliasing supression)
@@ -119,6 +127,9 @@ impl Tract {
             j_l[i - 1] = w_l[i] + w;
         }
 
+        // TODO: nasal computation needs to go here
+        // before waveguide update below
+
         for i in 0 .. self.tractlen as usize {
             w_r[i] = j_r[i] * 0.999;
             w_l[i] = j_l[i] * 0.999;
@@ -145,6 +156,7 @@ impl Tract {
             out = self.aliasing_suppression(out);
         }
 
+        // TODO: apply nasal component with velum control 
         out
     }
 
@@ -232,4 +244,25 @@ impl Tract {
         }
 
     }
+}
+
+impl Nose {
+    // pub fn new(sr: usize, length: f32, oversample: u16) -> Self {
+    // }
+    fn setup_shape(&mut self) {
+        // TODO: implement
+    }
+
+    // TODO implement
+    fn calculate_reflections(&mut self) {
+    }
+
+    // TODO implement tick
+    // Needs to be called in the middle of tract after
+    // the initial junction waveguide L/R is computed.
+    // needs to read: reflection_left, reflection_right,
+    // L/R delay lines at nose_start and nose_start-1
+    // Needs to write to: junctionL/R at nose_start-1 and
+    // nose_start.
+    // Should be called before waveguide is updated.
 }
