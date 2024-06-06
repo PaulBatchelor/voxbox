@@ -130,9 +130,9 @@ impl Glot {
         // calculate envelope start from lag
         // and glottal closure (Te) (note that Te is normalized)
         // make sure to factor in delay to make it centered
-    
 
-        self.t_env_start = 
+
+        self.t_env_start =
             (self.t_e + self.lag) - 0.5*self.env_size;
 
         // reset envelope position
@@ -211,20 +211,20 @@ impl Glot {
         // amplitude modulation
         // This is a scaled pitch-synchronous Hanning window,
         // centered on the glottal closure instants and desired lag.
-        // 
+        //
         // Per Lu's thesis, only one pulse per period is considered
         // as a good first approximation. The timing position
         // for the glottal closure instance is Te.
-        // 
+        //
         // Lag is specified as percentage relative to glottal
         // period length.
-        // 
+        //
         // The envelope "sits on top of the noise floor". That
         // is to say, it doesn't close all the way, letting
         // some noise out at the lower level. This is also
         // a parameter.
-    
-   
+
+
         let mut env = 0.0;
 
         // check and see if it is time to use the envelope
@@ -240,13 +240,13 @@ impl Glot {
         }
 
         // noise floor / pulsed noise, this is just crossfading
-       
+
         let nf = self.noise_floor;
 
         env = (nf + (1.0 - nf)*env) * noise;
 
         // attenutate by aspiration level
-        
+
         env *= self.aspiration;
         out += env;
         out
