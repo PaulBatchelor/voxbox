@@ -1,6 +1,7 @@
 use std::f32::consts::PI;
 
 const SPEED_OF_SOUND: f32 = 343.0; /* m/s @ 20C */
+const LIP_REFLECTION: f32 = -0.75;
 
 pub struct Nose {
     left: Vec<f32>,
@@ -10,7 +11,11 @@ pub struct Nose {
     areas: Vec<f32>,
     diams: Vec<f32>,
     reflections: Vec<f32>,
+    reflection_left: f32,
+    reflection_right: f32,
+    reflection_nose: f32,
     length: usize,
+    velum: f32,
 }
 
 pub struct Tract {
@@ -119,7 +124,7 @@ impl Tract {
 
         // reflection coefficients
         let glot_reflection = -0.85;
-        let lip_reflection = 0.75;
+        let lip_reflection = LIP_REFLECTION;
 
         j_r[0] = w_l[0] * glot_reflection + sig;
         j_l[len - 1] = w_r[len - 1] * lip_reflection;
@@ -134,6 +139,18 @@ impl Tract {
         // TODO: nasal computation needs to go here
         // before waveguide update below
 
+        // for i in 0 .. self.tractlen as usize {
+        //     w_r[i] = j_r[i] * 0.999;
+        //     w_l[i] = j_l[i] * 0.999;
+        // }
+    }
+
+    fn update_waveguide(&mut self) {
+        let j_l = &mut self.junc_left;
+        let j_r = &mut self.junc_right;
+
+        let w_l = &mut self.left;
+        let w_r = &mut self.right;
         for i in 0 .. self.tractlen as usize {
             w_r[i] = j_r[i] * 0.999;
             w_l[i] = j_l[i] * 0.999;
@@ -153,8 +170,37 @@ impl Tract {
             //self.compute_areas_from_diams();
             self.generate_reflection_coefficients();
             self.compute_scattering_junctions(sig);
+            self.update_waveguide();
 
             out = self.right[self.tractlen as usize - 1];
+
+            // apply crude anti-aliasing filter (simple 1-pole)
+            out = self.aliasing_suppression(out);
+        }
+
+        out
+    }
+
+    pub fn tick_with_nose(&mut self, nose: &mut Nose, sig: f32) -> f32 {
+        let mut out = 0.0;
+
+        // TODO: move nose_start to somewhere else
+        // 17 / 44
+        let nose_start = (0.38 * self.tractlen as f32) as usize;
+        for _ in 0 .. self.oversample {
+            self.generate_reflection_coefficients();
+
+            // should be called after generating reflections
+            nose.calculate_reflections_with_tract(self, nose_start);
+
+            self.compute_scattering_junctions(sig);
+    
+            let nasal = nose.tick(self, nose_start);
+
+            self.update_waveguide();
+
+            out = self.right[self.tractlen as usize - 1];
+            out += nasal;
 
             // apply crude anti-aliasing filter (simple 1-pole)
             out = self.aliasing_suppression(out);
@@ -266,6 +312,10 @@ impl Nose {
             reflections: vec![0.0; nose_length],
             diams: vec![0.0; nose_length],
             length: nose_length,
+            reflection_left: 0.0,
+            reflection_right: 0.0,
+            reflection_nose: 0.0,
+            velum: 0.0,
         };
 
         ns.setup_shape();
@@ -277,7 +327,7 @@ impl Nose {
 
         for i in 0 .. self.length {
             let mut d = 2.0 * (i as f32 / self.length as f32);
-            
+
             if d < 1.0 {
                 d = 0.4 + 1.6*d;
             } else {
@@ -300,7 +350,7 @@ impl Nose {
         let refl = &mut self.reflections;
         for i in 0 .. self.length {
             areas[i] = diams[i]*diams[i];
-        } 
+        }
 
         for i in 1 .. self.length {
             refl[i] =
@@ -309,12 +359,49 @@ impl Nose {
         }
     }
 
-    // TODO implement tick
-    // Needs to be called in the middle of tract after
-    // the initial junction waveguide L/R is computed.
-    // needs to read: reflection_left, reflection_right,
-    // L/R delay lines at nose_start and nose_start-1
-    // Needs to write to: junctionL/R at nose_start-1 and
-    // nose_start.
-    // Should be called before waveguide is updated.
+
+    pub fn calculate_reflections_with_tract(&mut self, tr: &mut Tract, nose_start: usize)
+    {
+        self.diams[0] = self.velum;
+        self.areas[0] = self.diams[0]*self.diams[0];
+        let sum =
+            tr.areas[nose_start] +
+            tr.areas[nose_start + 1] +
+            self.areas[0];
+        self.reflection_left = (2.0 * tr.areas[nose_start] - sum) / sum;
+        self.reflection_right = (2.0 * tr.areas[nose_start] + sum) / sum;
+        self.reflection_nose = (2.0 * self.areas[0] - sum) / sum;
+    }
+
+    pub fn tick(&mut self, tr: &mut Tract, nose_start: usize) -> f32 {
+        let r = self.reflection_left;
+        tr.junc_left[nose_start - 1] =
+            r*tr.right[nose_start - 1] +
+            (1.0 + r)*(self.left[0] + tr.left[nose_start]);
+
+        let r = self.reflection_right;
+        // TODO check this equation, it looks wrong.
+        // shouldn't it match junc_left more?
+        tr.junc_right[nose_start] =
+            r*tr.left[nose_start] +
+            (1.0 + r)*(self.left[0] + tr.right[nose_start - 1]);
+
+        let r = self.reflection_nose;
+        self.junc_right[0] =
+            r*self.left[0] +
+            (1.0+r)*(tr.left[nose_start]+tr.right[nose_start - 1]);
+
+        self.junc_left[self.length - 1] =
+            LIP_REFLECTION*self.right[self.length - 1];
+
+        for i in 1 .. self.length {
+            let w =
+                self.reflections[i] * 
+                (self.right[i - 1] + self.left[i]);
+            self.junc_right[i] = self.right[i - 1] - w;
+            self.junc_left[i] = self.left[i] + w;
+        }
+
+        self.right[self.length - 1] * self.velum
+    }
 }
