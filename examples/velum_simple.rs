@@ -1,6 +1,7 @@
 use voxbox::MonoWav;
 use voxbox::Glot;
 use voxbox::Tract;
+use voxbox::Nose;
 use std::f32::consts::PI;
 
 
@@ -27,13 +28,18 @@ fn main() {
     // tract is the filter.
     let mut glot = Glot::new(sr);
 
-    let mut tract = Tract::new(sr, 20.0, 1);
+    let tractlen = 20.0;
+    let oversample = 1;
+
+    let mut tract = Tract::new(sr, tractlen, oversample);
+
+    let mut nose = Nose::new(sr, tractlen * 0.63, oversample);
 
     // 2 pi / samplerate constant for ad-hoc sine oscillators
     let tpidsr = (2.0 * PI) / sr as f32;
 
     // some glottal parameter settings
-    glot.set_shape(0.4);
+    glot.set_shape(0.5);
     glot.set_aspiration(0.1);
     glot.set_noise_floor(0.01);
 
@@ -54,7 +60,7 @@ fn main() {
     // two tract shapes
     let mut shape: [f32; 8]= [1.0; 8];
 
-    for n in 0..(sr as f32 * 20.0) as usize {
+    for n in 0..(sr as f32 * 3.0) as usize {
         // set up some LFOs for vibrato, vibrato amount,
         // and amplitude
         let vibamt = sin(1.0 / 11.0, n, tpidsr);
@@ -75,9 +81,11 @@ fn main() {
         // set glottal source frequency
         glot.set_freq(mtof(65. + 0.3 * vib * vibamt * amp - 12.0 - 10.0 -5.0));
 
+        nose.set_velum(0.0);
         // processing and write WAV
         let s = glot.tick() * 0.7;
-        let t = tract.tick(s);
+        //let t = tract.tick(s);
+        let t = tract.tick_with_nose(&mut nose, s);
         wav.tick(t * 0.5);
     }
 }

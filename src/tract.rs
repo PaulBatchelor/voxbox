@@ -1,7 +1,8 @@
 use std::f32::consts::PI;
 
 const SPEED_OF_SOUND: f32 = 343.0; /* m/s @ 20C */
-const LIP_REFLECTION: f32 = -0.75;
+const LIP_REFLECTION: f32 = -0.85;
+const GLOTTAL_REFLECTION: f32 = 0.75;
 
 pub struct Nose {
     left: Vec<f32>,
@@ -16,6 +17,9 @@ pub struct Nose {
     reflection_nose: f32,
     length: usize,
     velum: f32,
+
+    // debug
+    samppos: usize,
 }
 
 pub struct Tract {
@@ -123,7 +127,7 @@ impl Tract {
         let len = self.tractlen as usize;
 
         // reflection coefficients
-        let glot_reflection = -0.85;
+        let glot_reflection = GLOTTAL_REFLECTION;
         let lip_reflection = LIP_REFLECTION;
 
         j_r[0] = w_l[0] * glot_reflection + sig;
@@ -187,17 +191,54 @@ impl Tract {
         // TODO: move nose_start to somewhere else
         // 17 / 44
         let nose_start = (0.38 * self.tractlen as f32) as usize;
+        // TODO: probably not in inner loop?
+
+        nose.samppos += 1;
         for _ in 0 .. self.oversample {
             self.generate_reflection_coefficients();
 
-            // should be called after generating reflections
+            if self.left[nose_start].is_nan() {
+                // dbg!(nose.samppos);
+                // panic!("NAN");
+            }
+
             nose.calculate_reflections_with_tract(self, nose_start);
 
+            // Doesn't seem to trigger a NaN
+            if self.junc_left[nose_start].is_nan() {
+                // This appears to be the earliest NaN at 1366
+                dbg!(nose.samppos);
+                panic!("NAN");
+            }
+
+            // What is going on in here?
             self.compute_scattering_junctions(sig);
-    
+
+            // Earliest NaN trigger
+            if self.junc_left[nose_start].is_nan() {
+                // This appears to be the earliest NaN at 1366
+                dbg!(nose.samppos);
+                panic!("NAN");
+            }
+
+            //let nasal = 0.0;
             let nasal = nose.tick(self, nose_start);
 
+            dbg!(nasal);
+
+            if self.junc_left[nose_start].is_nan() {
+                // This appears to be the earliest NaN at 1366
+                dbg!(nose.samppos);
+                panic!("NAN");
+            }
+
             self.update_waveguide();
+
+            if self.left[nose_start].is_nan() {
+                // This appears to be the earliest NaN at 1366
+                dbg!(nose.samppos);
+                panic!("NAN");
+            }
 
             out = self.right[self.tractlen as usize - 1];
             out += nasal;
@@ -206,7 +247,7 @@ impl Tract {
             out = self.aliasing_suppression(out);
         }
 
-        // TODO: apply nasal component with velum control 
+        // TODO: apply nasal component with velum control
         out
     }
 
@@ -316,6 +357,7 @@ impl Nose {
             reflection_right: 0.0,
             reflection_nose: 0.0,
             velum: 0.0,
+            samppos: 0,
         };
 
         ns.setup_shape();
@@ -344,6 +386,10 @@ impl Nose {
 
     }
 
+    pub fn set_velum(&mut self, velum: f32) {
+        self.velum = velum;
+    }
+
     fn calculate_reflections(&mut self) {
         let areas = &mut self.areas;
         let diams = &self.diams;
@@ -360,7 +406,7 @@ impl Nose {
     }
 
 
-    pub fn calculate_reflections_with_tract(&mut self, tr: &mut Tract, nose_start: usize)
+    pub fn calculate_reflections_with_tract(&mut self, tr: &Tract, nose_start: usize)
     {
         self.diams[0] = self.velum;
         self.areas[0] = self.diams[0]*self.diams[0];
@@ -374,34 +420,92 @@ impl Nose {
     }
 
     pub fn tick(&mut self, tr: &mut Tract, nose_start: usize) -> f32 {
+        let tr_jl = &mut tr.junc_left;
+        let tr_jr = &mut tr.junc_right;
+
+        let tr_l = &tr.left;
+        let tr_r = &tr.right;
+
+        let ns_l = &mut self.left;
+        let ns_r = &mut self.right;
+
+        let ns_jl = &mut self.junc_left;
+        let ns_jr = &mut self.junc_right;
+
         let r = self.reflection_left;
-        tr.junc_left[nose_start - 1] =
-            r*tr.right[nose_start - 1] +
-            (1.0 + r)*(self.left[0] + tr.left[nose_start]);
+
+        if tr_r[nose_start - 1].is_nan() {
+            // dbg!(self.samppos);
+            // panic!("NAN");
+        }
+
+        if ns_l[0].is_nan() {
+            // dbg!(self.samppos);
+            // panic!("NAN");
+        }
+
+        if tr_l[nose_start].is_nan() {
+            // dbg!(self.samppos);
+            // panic!("NAN");
+        }
+
+        tr_jl[nose_start - 1] =
+            r*tr_r[nose_start - 1] +
+            (1.0 + r)*(ns_l[0] + tr_l[nose_start]);
+
+        if tr_jl[nose_start - 1].is_nan() {
+            // dbg!(self.samppos);
+            // panic!("NAN");
+        }
 
         let r = self.reflection_right;
+
         // TODO check this equation, it looks wrong.
         // shouldn't it match junc_left more?
-        tr.junc_right[nose_start] =
-            r*tr.left[nose_start] +
-            (1.0 + r)*(self.left[0] + tr.right[nose_start - 1]);
+        tr_jr[nose_start] =
+            r*tr_l[nose_start] +
+            (1.0 + r)*(tr_r[nose_start - 1] + ns_l[0]);
+
+        if tr_jr[nose_start].is_nan() {
+            // dbg!(self.samppos);
+            // panic!("NAN");
+        }
 
         let r = self.reflection_nose;
-        self.junc_right[0] =
-            r*self.left[0] +
-            (1.0+r)*(tr.left[nose_start]+tr.right[nose_start - 1]);
+        ns_jr[0] =
+            r*ns_l[0] +
+            (1.0+r)*(tr_l[nose_start]+tr_r[nose_start - 1]);
 
-        self.junc_left[self.length - 1] =
-            LIP_REFLECTION*self.right[self.length - 1];
+        if ns_jr[0].is_nan() {
+            // dbg!(self.samppos);
+            // panic!("NAN");
+        }
+
+        ns_jl[self.length - 1] =
+            LIP_REFLECTION*ns_r[self.length - 1];
+
+        if ns_jl[self.length - 1].is_nan() {
+            // dbg!(self.samppos);
+            // panic!("NAN");
+        }
 
         for i in 1 .. self.length {
             let w =
-                self.reflections[i] * 
-                (self.right[i - 1] + self.left[i]);
-            self.junc_right[i] = self.right[i - 1] - w;
-            self.junc_left[i] = self.left[i] + w;
+                self.reflections[i] *
+                (ns_r[i - 1] + ns_l[i]);
+            if w.is_nan() {
+                // dbg!(self.samppos);
+                // panic!("NAN");
+            }
+            ns_jr[i] = ns_r[i - 1] - w;
+            ns_jl[i - 1] = ns_l[i] + w;
         }
 
-        self.right[self.length - 1] * self.velum
+        for i in 0 .. self.length {
+            ns_l[i] = ns_jl[i];
+            ns_r[i] = ns_jr[i];
+        }
+
+        self.right[self.length - 1]
     }
 }
