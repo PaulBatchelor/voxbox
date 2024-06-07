@@ -27,9 +27,12 @@ fn main() {
     // tract is the filter.
     let mut glot = Glot::new(sr);
 
-    // tract size is set to be 13cm, which is about the size
-    // of an adult female vocal tract
-    let mut tract = Tract::new(sr, 13.0, 1);
+    // tract size is set to be 17cm
+    // average size of an adult female vocal tract is 14cm
+    // male is supposed to be 17-18cm
+    // 14cm sounds too chipmunky, 17cm sounds about alto-y
+    // could be the imprecision of the 1d waveguide?
+    let mut tract = Tract::new(sr, 17.0, 1);
 
     // 2 pi / samplerate constant for ad-hoc sine oscillators
     let tpidsr = (2.0 * PI) / sr as f32;

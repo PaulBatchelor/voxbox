@@ -174,7 +174,8 @@ impl Glot {
     }
 
     fn rand(&mut self) -> u32 {
-        self.rng = (self.rng.wrapping_mul(1103515245) + 12345) % LCG_MAX;
+        self.rng = self.rng.wrapping_mul(1103515245);
+        self.rng = self.rng.wrapping_add(12345) % LCG_MAX;
         return self.rng;
     }
 

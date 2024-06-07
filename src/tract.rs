@@ -52,6 +52,7 @@ impl Tract {
             (((length * 0.01) / (SPEED_OF_SOUND as f32 / (sr as f32 * oversample as f32)))).floor() + 1.0;
 
         let tractlen = tractlen as usize;
+        println!("tract len: {}", tractlen);
 
         let mut tr = Tract {
             areas: vec![0.0; tractlen],
