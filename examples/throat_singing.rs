@@ -3,6 +3,7 @@ use voxbox::Glot;
 use voxbox::Tract;
 use voxbox::Nose;
 use voxbox::Smoother;
+use voxbox::BigVerb;
 use std::f32::consts::PI;
 
 
@@ -35,6 +36,10 @@ fn main() {
     let mut tract = Tract::new(sr, tractlen, oversample);
 
     let mut nose = Nose::new(sr, tractlen * 0.63, oversample);
+
+    let mut reverb = BigVerb::new(sr);
+    reverb.init();
+    reverb.size = 0.97;
 
     // 2 pi / samplerate constant for ad-hoc sine oscillators
     let tpidsr = (2.0 * PI) / sr as f32;
@@ -105,7 +110,7 @@ fn main() {
 
     for i in 0..8 {
         let s = &mut tract_smoothers[i];
-        s.set_smooth(0.008);
+        s.set_smooth(0.02);
         s.snap_to_value(shape2d[i]);
     }
 
@@ -121,11 +126,12 @@ fn main() {
 
     let seq = [
         4, 4, 4, 3, 2, 4,
-        3, 3, 3, 3, 3, 1,
-        2, 3, 1, 2, 3,
-        0, 0, 0, 1, 1, 1];
+        3, 3, 3, 3, 3, 3,
+        1, 2, 3, 1, 2, 3,
+        0, 0, 0,
+        1, 1, 1, 1, 1, 1];
 
-    let dur = 0.25;
+    let dur = 0.3;
     let mut seqpos = 0;
     let mut counter = (sr as f32 * 0.3) as usize;
 
@@ -180,6 +186,12 @@ fn main() {
         let s = glot.tick() * 0.7;
         //let t = tract.tick(s);
         let t = tract.tick_with_nose(&mut nose, s);
-        wav.tick(t * 0.5);
+        let t = t * 0.5;
+
+        let (rvb_l, _) = reverb.tick(t, t);
+
+        let out = t*0.8 + rvb_l * 0.2;
+        wav.tick(out);
+
     }
 }
