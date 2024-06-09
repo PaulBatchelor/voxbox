@@ -32,27 +32,27 @@ fn main() {
     // male is supposed to be 17-18cm
     // 14cm sounds too chipmunky, 17cm sounds about alto-y
     // could be the imprecision of the 1d waveguide?
-    let mut tract = Tract::new(sr, 17.0, 1);
+    let mut tract = Tract::new(sr, 13.0, 1);
 
     // 2 pi / samplerate constant for ad-hoc sine oscillators
     let tpidsr = (2.0 * PI) / sr as f32;
 
     // some glottal parameter settings
-    glot.set_shape(0.4);
+    glot.set_shape(0.576);
     glot.set_aspiration(0.3);
-    glot.set_noise_floor(0.01);
+    glot.set_noise_floor(0.287);
 
     // 2 tract shapes using the Distinct Region Model (DRM)
     // I tuned these by ear
 
     let shape1 = [
-        2.0, 3.0, 9.0, 2.0,
-        1.0, 1.0, 1.0, 1.0,
+        1.011, 0.201, 0.487, 0.440,
+        1.297, 2.368, 1.059, 2.225
     ];
 
     let shape2 = [
-        1.0, 1.0, 1.0, 1.0,
-        2.0, 3.0, 9.0, 2.0,
+        1.035, 0.201, 0.487, 0.440,
+        0.178, 0.249, 0.463, 2.249
     ];
 
     // Create a shape to hold interpolated blend of
@@ -69,7 +69,7 @@ fn main() {
         let vib = (vib + 1.0) * 0.5;
 
         // slowly morph between two tract shapes
-        let shaping = sin(1.0 / 6.0, n , tpidsr);
+        let shaping = sin(1.0 / 2.0, n , tpidsr);
         for i in 0 .. 8 {
             shape[i] = shaping * shape1[i] + (1.0 - shaping)*shape2[i];
         }
