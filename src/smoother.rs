@@ -1,3 +1,4 @@
+#[derive(Clone, Copy)]
 pub struct Smoother {
     smooth: f32,
     psmooth: f32,

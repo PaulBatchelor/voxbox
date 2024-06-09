@@ -2,6 +2,7 @@ use voxbox::MonoWav;
 use voxbox::Glot;
 use voxbox::Tract;
 use voxbox::Nose;
+use voxbox::Smoother;
 use std::f32::consts::PI;
 
 
@@ -22,7 +23,7 @@ fn main() {
     let sr = 44100;
 
     // write to wav
-    let mut wav = MonoWav::new("velum_simple.wav");
+    let mut wav = MonoWav::new("throat_singing.wav");
 
     // this is a source-filter model. glot is the source,
     // tract is the filter.
@@ -74,12 +75,62 @@ fn main() {
         0.082, 0.225, 0.749, 0.0,
     ];
 
+    let shape2e = [
+        0.106, 0.487,
+        2.94, 1.773,
+
+        0.082, 0.225, 0.749, 0.0,
+    ];
+
+    let shape2f = [
+        0.106, 0.487,
+        3.059, 2.725,
+
+        0.082, 0.225, 0.749, 0.0,
+    ];
+
+    let shape2g = [
+        0.106, 0.487,
+        3.13, 0.916,
+
+        0.082, 0.225, 0.749, 0.0,
+    ];
+
     // Create a shape to hold interpolated blend of
     // two tract shapes
     let mut shape: [f32; 8]= [1.0; 8];
     let mut which_shape = 0;
 
-    for n in 0..(sr as f32 * 10.0) as usize {
+    let mut tract_smoothers: [Smoother; 8] = [Smoother::new(sr); 8];
+
+    for i in 0..8 {
+        let s = &mut tract_smoothers[i];
+        s.set_smooth(0.008);
+        s.snap_to_value(shape2d[i]);
+    }
+
+    let mut shape_to_use = &shape2d;
+
+    let throat_shapes = [
+        &shape2g,
+        &shape2d,
+        &shape2e,
+        &shape2f,
+        &shape2c,
+    ];
+
+    let seq = [
+        4, 4, 4, 3, 2, 4,
+        3, 3, 3, 3, 3, 1,
+        2, 3, 1, 2, 3,
+        0, 0, 0, 1, 1, 1];
+
+    let dur = 0.25;
+    let mut seqpos = 0;
+    let mut counter = (sr as f32 * 0.3) as usize;
+
+    which_shape = seq[seqpos];
+    for n in 0..(sr as f32 * 20.0) as usize {
         // set up some LFOs for vibrato, vibrato amount,
         // and amplitude
         //let vibamt = sin(1.0 / 11.0, n, tpidsr);
@@ -91,26 +142,35 @@ fn main() {
         let vib = (vib + 1.0) * 0.5;
 
         // slowly morph between two tract shapes
-        let shaping = sin(1.0 / 3.0, n , tpidsr);
-        for i in 0 .. 8 {
-            shape[i] = shaping * shape1[i] + (1.0 - shaping)*shape2[i];
-        }
+        // let shaping = sin(1.0 / 3.0, n , tpidsr);
+        // for i in 0 .. 8 {
+        //     shape[i] = shaping * shape1[i] + (1.0 - shaping)*shape2[i];
+        // }
 
-        if (n % sr) == 0 {
-            if which_shape == 0 {
-                which_shape = 1;
-            } else {
-                which_shape = 0;
-
-            }
+        counter -= 1;
+        if counter == 0 {
+            //which_shape += 1;
+            //which_shape %= throat_shapes.len();
+            which_shape = seq[seqpos];
+            seqpos += 1;;
+            seqpos %= seq.len();
+            counter = (sr as f32 * dur) as usize;
         }
 
         // apply drm and convert it to raw area functions
-        if which_shape == 0 {
-            tract.drm(&shape2c);
-        } else {
-            tract.drm(&shape2d);
+        //if which_shape == 0 {
+        //    //tract.drm(&shape2c);
+        //    shape_to_use = &shape2c;
+        //} else {
+        //    shape_to_use = &shape2d;
+        //}
+
+        shape_to_use = throat_shapes[which_shape];
+        for i in 0..8 {
+            shape[i] = tract_smoothers[i].tick(shape_to_use[i]);
         }
+
+        tract.drm(&shape);
 
         // set glottal source frequency
         glot.set_freq(mtof(62. + 0.3 * vib * vibamt * amp - 12.0));
