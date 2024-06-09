@@ -139,81 +139,73 @@ impl Tract {
             j_r[i] = w_r[i - 1] - w;
             j_l[i - 1] = w_l[i] + w;
         }
-
-        // TODO: nasal computation needs to go here
-        // before waveguide update below
-
-        // for i in 0 .. self.tractlen as usize {
-        //     w_r[i] = j_r[i] * 0.999;
-        //     w_l[i] = j_l[i] * 0.999;
-        // }
     }
 
     // Temporary debug function to print sample position
-    fn dbg_compute_scattering_junctions(&mut self, sig: f32, pos: usize) {
-        let j_l = &mut self.junc_left;
-        let j_r = &mut self.junc_right;
+    // fn dbg_compute_scattering_junctions(&mut self, sig: f32, pos: usize) {
+    //     let j_l = &mut self.junc_left;
+    //     let j_r = &mut self.junc_right;
 
-        let w_l = &mut self.left;
-        let w_r = &mut self.right;
-        let len = self.tractlen as usize;
+    //     let w_l = &mut self.left;
+    //     let w_r = &mut self.right;
+    //     let len = self.tractlen as usize;
 
-        // reflection coefficients
-        let glot_reflection = GLOTTAL_REFLECTION;
-        let lip_reflection = LIP_REFLECTION;
+    //     // reflection coefficients
+    //     let glot_reflection = GLOTTAL_REFLECTION;
+    //     let lip_reflection = LIP_REFLECTION;
 
-        j_r[0] = w_l[0] * glot_reflection + sig;
-        j_l[len - 1] = w_r[len - 1] * lip_reflection;
+    //     j_r[0] = w_l[0] * glot_reflection + sig;
+    //     j_l[len - 1] = w_r[len - 1] * lip_reflection;
 
-        let r = &self.reflections;
-        for i in 1 .. self.tractlen as usize {
-            let w = r[i] * (w_r[i - 1] + w_l[i]);
-            if r[i].is_nan() {
-                //dbg!(pos);
-                //panic!("NAN");
-            }
-            if w_l[i].is_nan() {
-                //dbg!(pos);
-                //panic!("NAN");
-            }
-            if w_r[i - 1].is_nan() {
-                //dbg!(pos);
-                //panic!("NAN");
-            }
+    //     let r = &self.reflections;
+    //     for i in 1 .. self.tractlen as usize {
+    //         let w = r[i] * (w_r[i - 1] + w_l[i]);
+    //         if r[i].is_nan() {
+    //             //dbg!(pos);
+    //             //panic!("NAN");
+    //         }
+    //         if w_l[i].is_nan() {
+    //             //dbg!(pos);
+    //             //panic!("NAN");
+    //         }
+    //         if w_r[i - 1].is_nan() {
+    //             //dbg!(pos);
+    //             //panic!("NAN");
+    //         }
 
 
-            // 2024-06-08 11:57 Interesting...
-            let add1 = w_r[i - 1] + w_l[i];
-            let add2 = r[i] * add1;
+    //         // 2024-06-08 11:57 Interesting...
+    //         let add1 = w_r[i - 1] + w_l[i];
+    //         let add2 = r[i] * add1;
 
-            if add1.is_finite() == false {
-                //dbg!(pos, i);
-                //panic!("INF");
-            }
+    //         if add1.is_finite() == false {
+    //             //dbg!(pos, i);
+    //             //panic!("INF");
+    //         }
 
-            // if add2.is_nan() {
-            //     dbg!(r[i], add1);
-            //     panic!("NAN");
-            // }
+    //         // if add2.is_nan() {
+    //         //     dbg!(r[i], add1);
+    //         //     panic!("NAN");
+    //         // }
 
-            // 2024-06-08 11:50: this is the earliest NaN
-            // Numbers are too big for 32-bit floats in w_l and w_r.
-            if w.is_nan() {
-                //dbg!(pos, w_r[i - 1], w_l[i], r[i], i);
-                //panic!("NAN");
-            }
-            j_r[i] = w_r[i - 1] - w;
-            j_l[i - 1] = w_l[i] + w;
-        }
+    //         // 2024-06-08 11:50: this is the earliest NaN
+    //         // Numbers are too big for 32-bit floats in w_l and w_r.
+    //         if w.is_nan() {
+    //             //dbg!(pos, w_r[i - 1], w_l[i], r[i], i);
+    //             //panic!("NAN");
+    //         }
+    //         j_r[i] = w_r[i - 1] - w;
+    //         j_l[i - 1] = w_l[i] + w;
+    //     }
 
-        // TODO: nasal computation needs to go here
-        // before waveguide update below
+    //     // TODO: nasal computation needs to go here
+    //     // before waveguide update below
 
-        // for i in 0 .. self.tractlen as usize {
-        //     w_r[i] = j_r[i] * 0.999;
-        //     w_l[i] = j_l[i] * 0.999;
-        // }
-    }
+    //     // for i in 0 .. self.tractlen as usize {
+    //     //     w_r[i] = j_r[i] * 0.999;
+    //     //     w_l[i] = j_l[i] * 0.999;
+    //     // }
+    // }
 
     fn update_waveguide(&mut self) {
         let j_l = &self.junc_left;
@@ -277,35 +269,9 @@ impl Tract {
                 //panic!("NAN");
             }
 
-            // What is going on in here?
-            self.dbg_compute_scattering_junctions(sig, nose.samppos);
-
-            // Earliest NaN trigger
-            if self.junc_left[nose_start].is_nan() {
-                // This appears to be the earliest NaN at 1366
-                //dbg!(nose.samppos);
-                //panic!("NAN");
-            }
-
-            //let nasal = 0.0;
+            self.compute_scattering_junctions(sig);
             let nasal = nose.tick(self, nose_start);
-
-            //dbg!(nasal);
-
-            if self.junc_left[nose_start].is_nan() {
-                // This appears to be the earliest NaN at 1366
-                //dbg!(nose.samppos);
-                //panic!("NAN");
-            }
-
             self.update_waveguide();
-
-            if self.left[nose_start].is_nan() {
-                // This appears to be the earliest NaN at 1366
-                //dbg!(nose.samppos);
-                //panic!("NAN");
-            }
-
             out = self.right[self.tractlen as usize - 1];
             out += nasal;
 
@@ -452,9 +418,7 @@ impl Nose {
 
             diams[i] = d;
         }
-        // self.calculate_reflections();
-        // dbg!(&self.reflections);
-        // panic!("reflections");
+        self.calculate_reflections();
     }
 
     pub fn set_velum(&mut self, velum: f32) {
@@ -485,7 +449,6 @@ impl Nose {
             tr.areas[nose_start] +
             tr.areas[nose_start + 1] +
             self.areas[0];
-        //dbg!(sum);
         self.reflection_left = (2.0 * tr.areas[nose_start] - sum) / sum;
         self.reflection_right = (2.0 * tr.areas[nose_start + 1] - sum) / sum;
         self.reflection_nose = (2.0 * self.areas[0] - sum) / sum;
