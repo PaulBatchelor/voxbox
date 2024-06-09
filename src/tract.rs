@@ -187,7 +187,7 @@ impl Tract {
             let add2 = r[i] * add1;
 
             if add1.is_finite() == false {
-                dbg!(pos);
+                dbg!(pos, i);
                 panic!("INF");
             }
 
@@ -256,9 +256,9 @@ impl Tract {
 
         // TODO: move nose_start to somewhere else
         // 17 / 44
-        let nose_start = (0.38 * self.tractlen as f32) as usize;
+        let nose_start = (0.39 * self.tractlen as f32) as usize;
         // TODO: probably not in inner loop?
-
+        dbg!(self.tractlen);
         nose.samppos += 1;
         for _ in 0 .. self.oversample {
             self.generate_reflection_coefficients();
@@ -290,7 +290,7 @@ impl Tract {
             //let nasal = 0.0;
             let nasal = nose.tick(self, nose_start);
 
-            dbg!(nasal);
+            //dbg!(nasal);
 
             if self.junc_left[nose_start].is_nan() {
                 // This appears to be the earliest NaN at 1366
@@ -442,7 +442,11 @@ impl Nose {
                 d = 0.5 + 1.5*(2.0 - d);
             }
 
-            if d > 1.9 {
+            // silly translation of ternary expression,
+            // for debugging purposes
+            if d < 1.9 {
+                d = d;
+            } else {
                 d = 1.9;
             }
 
@@ -535,6 +539,20 @@ impl Nose {
         if tr_jr[nose_start].is_nan() {
             // dbg!(self.samppos);
             // panic!("NAN");
+        }
+
+        // 2024-06-08 21:31 this starts blowing up slowly
+        if tr_jr[nose_start] > 20.0 {
+            dbg!(tr_jr[nose_start], r, nose_start, self.samppos);
+            panic!("Large number!");
+        }
+
+        let i = 11;
+        let sum = tr_jr[i - 1] + tr_jl[i];
+
+        if sum.is_finite() == false {
+            dbg!(tr_jr[i - 1]);
+            panic!("INF");
         }
 
         let r = self.reflection_nose;
