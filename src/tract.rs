@@ -258,7 +258,7 @@ impl Tract {
         // 17 / 44
         let nose_start = (0.39 * self.tractlen as f32) as usize;
         // TODO: probably not in inner loop?
-        dbg!(self.tractlen);
+        //dbg!(self.tractlen);
         nose.samppos += 1;
         for _ in 0 .. self.oversample {
             self.generate_reflection_coefficients();
@@ -452,8 +452,9 @@ impl Nose {
 
             diams[i] = d;
         }
-        self.calculate_reflections();
-
+        // self.calculate_reflections();
+        // dbg!(&self.reflections);
+        // panic!("reflections");
     }
 
     pub fn set_velum(&mut self, velum: f32) {
@@ -484,9 +485,11 @@ impl Nose {
             tr.areas[nose_start] +
             tr.areas[nose_start + 1] +
             self.areas[0];
+        //dbg!(sum);
         self.reflection_left = (2.0 * tr.areas[nose_start] - sum) / sum;
-        self.reflection_right = (2.0 * tr.areas[nose_start] + sum) / sum;
+        self.reflection_right = (2.0 * tr.areas[nose_start + 1] - sum) / sum;
         self.reflection_nose = (2.0 * self.areas[0] - sum) / sum;
+        //dbg!(self.reflection_right, self.velum);
     }
 
     pub fn tick(&mut self, tr: &mut Tract, nose_start: usize) -> f32 {
