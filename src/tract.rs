@@ -169,16 +169,16 @@ impl Tract {
         for i in 1 .. self.tractlen as usize {
             let w = r[i] * (w_r[i - 1] + w_l[i]);
             if r[i].is_nan() {
-                dbg!(pos);
-                panic!("NAN");
+                //dbg!(pos);
+                //panic!("NAN");
             }
             if w_l[i].is_nan() {
-                dbg!(pos);
-                panic!("NAN");
+                //dbg!(pos);
+                //panic!("NAN");
             }
             if w_r[i - 1].is_nan() {
-                dbg!(pos);
-                panic!("NAN");
+                //dbg!(pos);
+                //panic!("NAN");
             }
 
 
@@ -187,8 +187,8 @@ impl Tract {
             let add2 = r[i] * add1;
 
             if add1.is_finite() == false {
-                dbg!(pos, i);
-                panic!("INF");
+                //dbg!(pos, i);
+                //panic!("INF");
             }
 
             // if add2.is_nan() {
@@ -199,8 +199,8 @@ impl Tract {
             // 2024-06-08 11:50: this is the earliest NaN
             // Numbers are too big for 32-bit floats in w_l and w_r.
             if w.is_nan() {
-                dbg!(pos, w_r[i - 1], w_l[i], r[i], i);
-                panic!("NAN");
+                //dbg!(pos, w_r[i - 1], w_l[i], r[i], i);
+                //panic!("NAN");
             }
             j_r[i] = w_r[i - 1] - w;
             j_l[i - 1] = w_l[i] + w;
@@ -273,8 +273,8 @@ impl Tract {
             // Doesn't seem to trigger a NaN
             if self.junc_left[nose_start].is_nan() {
                 // This appears to be the earliest NaN at 1366
-                dbg!(nose.samppos);
-                panic!("NAN");
+                //dbg!(nose.samppos);
+                //panic!("NAN");
             }
 
             // What is going on in here?
@@ -283,8 +283,8 @@ impl Tract {
             // Earliest NaN trigger
             if self.junc_left[nose_start].is_nan() {
                 // This appears to be the earliest NaN at 1366
-                dbg!(nose.samppos);
-                panic!("NAN");
+                //dbg!(nose.samppos);
+                //panic!("NAN");
             }
 
             //let nasal = 0.0;
@@ -294,16 +294,16 @@ impl Tract {
 
             if self.junc_left[nose_start].is_nan() {
                 // This appears to be the earliest NaN at 1366
-                dbg!(nose.samppos);
-                panic!("NAN");
+                //dbg!(nose.samppos);
+                //panic!("NAN");
             }
 
             self.update_waveguide();
 
             if self.left[nose_start].is_nan() {
                 // This appears to be the earliest NaN at 1366
-                dbg!(nose.samppos);
-                panic!("NAN");
+                //dbg!(nose.samppos);
+                //panic!("NAN");
             }
 
             out = self.right[self.tractlen as usize - 1];
@@ -546,16 +546,16 @@ impl Nose {
 
         // 2024-06-08 21:31 this starts blowing up slowly
         if tr_jr[nose_start] > 20.0 {
-            dbg!(tr_jr[nose_start], r, nose_start, self.samppos);
-            panic!("Large number!");
+            //dbg!(tr_jr[nose_start], r, nose_start, self.samppos);
+            //panic!("Large number!");
         }
 
         let i = 11;
         let sum = tr_jr[i - 1] + tr_jl[i];
 
         if sum.is_finite() == false {
-            dbg!(tr_jr[i - 1]);
-            panic!("INF");
+            //dbg!(tr_jr[i - 1]);
+            //panic!("INF");
         }
 
         let r = self.reflection_nose;
