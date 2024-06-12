@@ -6,6 +6,7 @@ mod tract;
 mod dcblocker;
 mod smoother;
 mod bigverb;
+mod rephasor;
 
 pub use monowav::*;
 pub use phasor::*;
@@ -14,3 +15,4 @@ pub use tract::*;
 pub use dcblocker::*;
 pub use smoother::*;
 pub use bigverb::*;
+pub use rephasor::*;
