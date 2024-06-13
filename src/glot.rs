@@ -3,6 +3,12 @@ const LCG_MAX: u32 = 2147483648;
 use std::f32::consts::PI;
 use crate::butterworth::{ButterworthLowPass, ButterworthHighPass};
 
+// midi-to-frequency converter
+fn mtof(nn: f32) -> f32 {
+    let freq = (2.0_f32).powf((nn - 69.0) / 12.0) * 440.0;
+    freq
+}
+
 pub struct Glot {
     freq: f32,
     r_d: f32,
@@ -155,6 +161,10 @@ impl Glot {
 
     pub fn set_freq(&mut self, freq: f32) {
         self.freq = freq;
+    }
+
+    pub fn set_pitch(&mut self, pitch: f32) {
+        self.set_freq(mtof(pitch));
     }
 
     pub fn set_shape(&mut self, shape: f32) {

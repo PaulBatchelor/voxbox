@@ -8,6 +8,7 @@ mod smoother;
 mod bigverb;
 mod rephasor;
 mod nose;
+mod voice;
 
 pub use monowav::*;
 pub use phasor::*;
@@ -18,3 +19,4 @@ pub use smoother::*;
 pub use bigverb::*;
 pub use rephasor::*;
 pub use nose::*;
+pub use voice::*;
