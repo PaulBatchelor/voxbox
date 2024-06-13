@@ -7,6 +7,7 @@ mod dcblocker;
 mod smoother;
 mod bigverb;
 mod rephasor;
+mod nose;
 
 pub use monowav::*;
 pub use phasor::*;
@@ -16,3 +17,4 @@ pub use dcblocker::*;
 pub use smoother::*;
 pub use bigverb::*;
 pub use rephasor::*;
+pub use nose::*;
