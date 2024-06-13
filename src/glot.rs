@@ -9,6 +9,32 @@ fn mtof(nn: f32) -> f32 {
     freq
 }
 
+const JI_RATIOS: [f32; 8] = [
+    /* do */
+    1.00000,
+
+    /* 9:8 (re) */
+    1.12500,
+
+    /* 5:4 (mi) */
+    1.25000,
+
+    /* 4:3 (fa) */
+    1.33333,
+
+    /* 3:2 (so) */
+    1.50000,
+
+    /* 5:3 (la) */
+    1.66666,
+
+    /* 15:8 (ti) */
+    1.87500,
+
+    /* 2:1 (do) */
+    2.00000
+];
+
 pub struct Glot {
     freq: f32,
     r_d: f32,
@@ -165,6 +191,10 @@ impl Glot {
 
     pub fn set_pitch(&mut self, pitch: f32) {
         self.set_freq(mtof(pitch));
+    }
+
+    pub fn set_pitch_ji(&mut self, base: f32, step: usize) {
+        self.set_freq(mtof(base) * JI_RATIOS[step]);
     }
 
     pub fn set_shape(&mut self, shape: f32) {
