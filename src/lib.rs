@@ -9,6 +9,7 @@ mod bigverb;
 mod rephasor;
 mod nose;
 mod voice;
+mod gesture;
 
 pub use monowav::*;
 pub use phasor::*;
@@ -20,3 +21,4 @@ pub use bigverb::*;
 pub use rephasor::*;
 pub use nose::*;
 pub use voice::*;
+pub use gesture::*;
