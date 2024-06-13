@@ -17,12 +17,45 @@ pub struct Gesture {
     lphs: f32,
 }
 
-// pub struct GestureVertex {
-//     val: f32,
-//     num: f32,
-//     den: f32,
-//     bhvr: Behavior,
-// }
+pub struct GestureVertex {
+    val: f32,
+    num: f32,
+    den: f32,
+    bhvr: Behavior,
+}
+
+pub trait SignalGenerator {
+    fn next_vertex(&self) -> GestureVertex;
+    fn tick(&mut self, clk: f32) -> f32;
+}
+
+impl SignalGenerator for Gesture {
+    fn next_vertex(&self) -> GestureVertex {
+        GestureVertex {
+            val: 0.0, num: 1.0, den: 1.0, bhvr: Behavior::Linear
+        }
+    }
+
+    fn tick(&mut self, clk: f32) -> f32 {
+        self.rephasor.set_scale(self.ratemul);
+        let phs = self.rephasor.tick(clk);
+
+        if self.lphs < phs {
+            // TODO: update prev/next and ratemul
+            let vtx = self.next_vertex();
+        }
+
+        let a = apply_behavior(phs, &self.behavior);
+
+        let out =
+            (1.0 - a)*self.prev +
+            a * self.next;
+
+        self.lphs = phs;
+
+        out
+    }
+}
 
 impl Gesture {
     pub fn new() -> Self {
@@ -38,24 +71,6 @@ impl Gesture {
         g
     }
 
-    pub fn tick(&mut self, clk: f32) -> f32 {
-        self.rephasor.set_scale(self.ratemul);
-        let phs = self.rephasor.tick(clk);
-
-        if self.lphs < phs {
-            // TODO: update prev/next and ratemul
-        }
-
-        let a = apply_behavior(phs, &self.behavior);
-
-        let out =
-            (1.0 - a)*self.prev +
-            a * self.next;
-
-        self.lphs = phs;
-
-        out
-    }
 
 }
 
