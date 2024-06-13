@@ -6,7 +6,7 @@ fn main() {
     let tract_cm_tenor = 16.0;
     let tract_cm_bass = 18.0;
     let tract_cm_alto = 15.0;
-    let tract_cm_soprano = 14.0;
+    let tract_cm_soprano = 12.0;
     let chord = [0, 7, 0, 4]; 
     let base_pitch = 63;
 

@@ -35,7 +35,7 @@ impl Voice {
 
     pub fn tick(&mut self) -> f32 {
         let phs = self.phasor.tick();
-        let vib = (phs * 2.0*PI).sin() * 0.1;
+        let vib = (phs * 2.0*PI).sin() * 0.03;
         self.glottis.set_pitch(self.pitch + vib);
         let g = self.glottis.tick();
         let t = self.tract.tick(g);
