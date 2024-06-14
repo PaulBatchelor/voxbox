@@ -235,7 +235,7 @@ impl BigVerb {
             bufsize += get_delay_size(&p, sr);
         }
 
-        BigVerb {
+        let mut bv = BigVerb {
             sr,
             size: 0.93,
             cutoff: 10000.0,
@@ -243,7 +243,10 @@ impl BigVerb {
             filt: 1.0,
             delay: [BigVerbDelay::new(); 8],
             buf: vec![0.0; bufsize],
-        }
+        };
+
+        bv.init();
+        bv
     }
 
     pub fn init(&mut self) {

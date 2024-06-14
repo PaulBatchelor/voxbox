@@ -18,6 +18,7 @@ fn main() {
     let e = &[1, 2];
     let s = &[1, 4];
     let edot = &[3, 4];
+    let mut reverb = BigVerb::new(sr);
 
     voice.glottis.set_aspiration(0.3);
     let nt = |nn: u16, dur| -> GestureVertex {
@@ -62,12 +63,14 @@ fn main() {
     ];
 
     voice.tract.drm(&shape1);
+    reverb.size = 0.75;
 
     for _ in 0 .. (sr as f32 * 10.0) as usize {
         let c = clk.tick();
         let pitch = gst.tick(c);
         voice.pitch = pitch;
         let out = voice.tick() * 0.5;
-        wav.tick(out);
+        let (rvb, _) = reverb.tick(out, out);
+        wav.tick(out + rvb*0.08);
     }
 }
