@@ -22,8 +22,8 @@ impl Voice {
             pitch: 60.0,
         };
 
-        v.glottis.set_shape(0.576);
-        v.glottis.set_aspiration(0.3);
+        v.glottis.set_shape(0.476);
+        v.glottis.set_aspiration(0.1);
         v.glottis.set_noise_floor(0.287);
         v.phasor.set_freq(6.0);
         v
