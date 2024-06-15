@@ -16,6 +16,7 @@ pub struct Tract {
     pub areas: Vec<f32>,
 
     tractlen: usize,
+    tractlen_max: usize,
 
     reflections: Vec<f32>,
 
@@ -31,6 +32,7 @@ pub struct Tract {
     prvhp: f32,
     tpidsr: f32,
     oversample: u16,
+    sr: usize,
 }
 
 impl Tract {
@@ -57,6 +59,8 @@ impl Tract {
             prvhp: 0.0,
             tpidsr: 2.0 * PI / (sr as f32 * oversample as f32),
             tractlen: tractlen,
+            tractlen_max: tractlen,
+            sr: sr,
         };
 
         tr.setup_antialiasing_filter(sr);
@@ -286,5 +290,20 @@ impl Tract {
 
     pub fn get_lip_reflection(&self) -> f32 {
         return LIP_REFLECTION;
+    }
+
+    pub fn set_length(&mut self, len_cm: f32) {
+        let tractlen =
+            (((len_cm * 0.01) /
+              (SPEED_OF_SOUND as f32 /
+               (self.sr as f32 * self.oversample as f32)))).floor() + 1.0;
+
+        let mut tractlen = tractlen as usize;
+
+        if tractlen > self.tractlen_max {
+            tractlen = self.tractlen_max;
+        }
+
+        self.tractlen = tractlen;
     }
 }
