@@ -1,4 +1,5 @@
 use crate::RePhasor;
+//use std::option;
 
 #[derive(Copy, Clone)]
 pub enum Behavior {
@@ -23,7 +24,8 @@ pub struct Gesture {
 
 pub struct LinearGesture<'a> {
     gest: Gesture,
-    path: &'a [GestureVertex],
+    //path: &'a [GestureVertex],
+    path: Option<&'a Vec<GestureVertex>>,
     pos: usize,
 }
 
@@ -136,19 +138,19 @@ fn apply_behavior(phs: f32, bhvr: &Behavior) -> f32 {
             phs
         },
         Behavior::GlissMedium => {
-            gliss_it(phs, 0.75) 
+            gliss_it(phs, 0.75)
         },
         Behavior::GlissSmall => {
-            gliss_it(phs, 0.85) 
+            gliss_it(phs, 0.85)
         },
         Behavior::GlissLarge => {
-            gliss_it(phs, 0.5) 
+            gliss_it(phs, 0.5)
         },
         Behavior::GlissHuge => {
-            gliss_it(phs, 0.1) 
+            gliss_it(phs, 0.1)
         },
         Behavior::GlissTiny => {
-            gliss_it(phs, 0.9) 
+            gliss_it(phs, 0.9)
         },
     };
 
@@ -156,19 +158,29 @@ fn apply_behavior(phs: f32, bhvr: &Behavior) -> f32 {
 }
 
 impl<'a> LinearGesture<'a> {
-    pub fn new(path: &'a [GestureVertex]) -> Self {
-        let mut lg = LinearGesture {
+    //pub fn new(path: &'a Vec<GestureVertex>) -> Self {
+    //    let mut lg = LinearGesture {
+    //        gest: Gesture::new(),
+    //        path: path,
+    //        pos: 0,
+    //    };
+
+    //    lg.init();
+
+    //    lg
+    //}
+    pub fn new() -> Self {
+        let lg = LinearGesture {
             gest: Gesture::new(),
-            path: path,
+            path: None,
             pos: 0,
         };
-
-        lg.init();
 
         lg
     }
 
-    fn init(&mut self) {
+    pub fn init(&mut self, path: &'a Vec<GestureVertex>) {
+        self.path = Some(path);
         // get vertex, now next vertex is on deck
         let a = self.next_vertex();
         // this is called before the first tick
@@ -183,11 +195,22 @@ impl<'a> LinearGesture<'a> {
 
 impl SignalGenerator for LinearGesture<'_> {
     fn next_vertex(&mut self) -> GestureVertex {
-        let next = self.path[self.pos];
-        self.pos += 1;
-        if self.pos >= self.path.len() {
-            self.pos = 0;
-        }
+        let next = match self.path {
+            Some(x) => {
+                let nxt = x[self.pos];
+                self.pos += 1;
+                if self.pos >= x.len() {
+                    self.pos = 0;
+                }
+                nxt
+            },
+
+            None => {
+                GestureVertex {
+                    val: 0.0, num: 1, den: 1, bhvr: Behavior::Linear
+                }
+            }
+        };
         next
     }
 

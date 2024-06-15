@@ -29,7 +29,7 @@ fn main() {
         vtx(base + nn as f32, dur, bvr)
     };
 
-    let gpath = [
+    let gpath = vec![
         nt(0, e),
         nt(2, e),
         nt(3, e),
@@ -55,7 +55,10 @@ fn main() {
 
     clk.set_freq(98.0 / 60.0);
 
-    let mut gst = LinearGesture::new(&gpath);
+    let mut gst = LinearGesture::new();
+
+    gst.init(&gpath);
+    //gst.path = Some(&gpath);
 
     let shape1 = [
         1.011, 0.201, 0.487, 0.440,
