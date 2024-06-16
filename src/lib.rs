@@ -22,3 +22,4 @@ pub use rephasor::*;
 pub use nose::*;
 pub use voice::*;
 pub use gesture::*;
+pub use butterworth::*;

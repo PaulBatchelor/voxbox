@@ -4,6 +4,53 @@ fn db2lin(db: f32) -> f32 {
     (10.0_f32).powf(db / 20.)
 }
 
+fn pitch_gestures(chords: &[[i16;4]]) -> Vec<Vec<GestureVertex>>
+{
+    let mut sop = vec![];
+    let mut alt = vec![];
+    let mut ten = vec![];
+    let mut bas = vec![];
+    let mut paths = vec![];
+
+   
+    for chord in chords.iter() {
+        bas.push(GestureVertex {
+            val: chord[0] as f32,
+            num: 1,
+            den: 4,
+            bhvr: Behavior::GlissMedium
+        });
+
+        ten.push(GestureVertex {
+            val: chord[1] as f32,
+            num: 1,
+            den: 4,
+            bhvr: Behavior::GlissMedium
+        });
+
+        alt.push(GestureVertex {
+            val: chord[2] as f32,
+            num: 1,
+            den: 4,
+            bhvr: Behavior::GlissMedium
+        });
+
+        sop.push(GestureVertex {
+            val: chord[3] as f32,
+            num: 1,
+            den: 4,
+            bhvr: Behavior::GlissMedium
+        });
+    }
+
+    paths.push(bas);
+    paths.push(ten);
+    paths.push(alt);
+    paths.push(sop);
+
+    paths
+}
+
 fn main() {
     let sr = 44100;
     let oversample = 2;
@@ -11,12 +58,46 @@ fn main() {
     let tract_cm_bass = 18.3;
     let tract_cm_alto = 14.3;
     let tract_cm_soprano = 12.9;
-    let chord = [0, 7, 0, 4]; 
+    //let chord = [0, 7, 0, 4]; 
     //let chord = [0, 9, 2, 7]; 
     let base_pitch = 63;
     let mut reverb = BigVerb::new(sr);
+    let mut clk = Phasor::new(sr, 0.0);
+    clk.set_freq(105.0 / 60.0);
+    let mut dcblk = DCBlocker::new(sr);
+
+    let chords = [
+        [0, 7, 0, 4],
+        [-2, 7, 0, 2],
+        [0, 7, 4, 5],
+        [0, 7, 2, 4],
+
+        [0, 7, 4, 7],
+        [-4, 3, 0, 8],
+        [-5, 5, 2, 10],
+        [-12, 0, 4, 12],
+        [-12, 8, 4, 12],
+        [-12, 7, 4, 12],
+        [-12, 14, 4, 12],
+        [-12, 12, 4, 12],
+        [-12, 16, 4, 12],
+        [-12, 16, 2, 12],
+        [-12, 16, 2, 12],
+        [-12, 16, 2, 12],
+    ];
 
     let mut wav = MonoWav::new("vocal_chords.wav");
+
+    let paths = pitch_gestures(&chords);
+    
+    let mut gst_sop = LinearGesture::new();
+    gst_sop.init(&paths[3]);
+    let mut gst_alt = LinearGesture::new();
+    gst_alt.init(&paths[2]);
+    let mut gst_ten = LinearGesture::new();
+    gst_ten.init(&paths[1]);
+    let mut gst_bas = LinearGesture::new();
+    gst_bas.init(&paths[0]);
 
     let mut alto = Voice::new(sr, tract_cm_alto, oversample);
     let mut bass = Voice::new(sr, tract_cm_bass, oversample);
@@ -24,32 +105,6 @@ fn main() {
     let mut soprano = Voice::new(sr, tract_cm_soprano, oversample);
 
     let shape_ah_alto = [
-        // 1.32,
-        // 0.44,
-        // 0.463,
-        // 0.5,
-        // 1.44,
-        // 2.725,
-        // 2.868,
-        // 1.606
-       // 1.059,
-       //  0.273,
-       //  0.32,
-       //  0.392,
-       //  1.535,
-       //  2.368,
-       //  0.511,
-       //  2.963
-
-        // 0.225,
-        // 0.154,
-        // 0.392,
-        // 0.5,
-        // 0.5,
-        // 2.13,
-        // 3.511,
-        // 2.059
-
         1.225,
         0.225,
         0.392,
@@ -61,25 +116,6 @@ fn main() {
     ];
 
     let shape_ah_sop = [
-        //1.059,
-        //0.273,
-        //0.32,
-        //0.392,
-        //1.535,
-        //2.368,
-        //0.511,
-        //2.963
-        
-        // 0.106,
-        // 0.011,
-        // 0.082,
-        // 0.178,
-        // 2.13,
-        // 3.701,
-        // 3.106,
-        // 1.63,
-
-
         1.773,
         0.225,
         0.392,
@@ -102,15 +138,6 @@ fn main() {
     ];
 
     let shape_ah_bass = [
-        // 0.225,
-        // 0.059,
-        // 0.059,
-        // 0.082,
-        // 0.701,
-        // 3.868,
-        // 0.32,
-        // 0.963
-
         0.225,
         0.63,
         0.844,
@@ -123,41 +150,71 @@ fn main() {
 
     tenor.tract.drm(&shape_ah_tenor);
     //tenor.glottis.set_pitch((base_pitch + chord[1] - 12) as f32);
-    tenor.pitch = (base_pitch + chord[1] - 12) as f32;
     //tenor.glottis.set_pitch_ji((base_pitch - 12) as f32, 4);
-    tenor.glottis.set_shape(0.6);
+    tenor.glottis.set_shape(0.4);
     tenor.glottis.srand(12345);
+    tenor.vibrato_rate(6.1);
+    tenor.vibrato_depth(0.2);
 
     bass.tract.drm(&shape_ah_bass);
+    bass.vibrato_rate(6.0);
     //bass.glottis.set_pitch((base_pitch + chord[0] - 12) as f32);
-    bass.pitch = (base_pitch + chord[0] - 24) as f32;
 
-    bass.glottis.set_pitch_ji((base_pitch - 12) as f32, 0);
-    //bass.glottis.set_shape(0.4);
+    //bass.glottis.set_pitch_ji((base_pitch - 12) as f32, 0);
+    bass.glottis.set_shape(0.3);
     bass.glottis.srand(54321);
+    bass.glottis.set_aspiration(0.01);
 
     alto.tract.drm(&shape_ah_alto);
-    alto.pitch = (base_pitch + chord[2]) as f32;
+    alto.vibrato_rate(6.0);
     alto.glottis.set_shape(0.4);
     alto.glottis.set_aspiration(0.1);
-    alto.glottis.srand(333333);
+    alto.glottis.srand(330303);
 
     soprano.tract.drm(&shape_ah_sop);
-    soprano.pitch = (base_pitch + chord[3]) as f32;
-    soprano.glottis.set_shape(0.4);
+    soprano.glottis.set_shape(0.5);
     soprano.glottis.set_aspiration(0.1);
     soprano.glottis.srand(111111);
+    soprano.vibrato_rate(6.5);
+    soprano.vibrato_depth(0.1);
 
-    reverb.size = -0.97;
-    for _ in 0 .. (sr as f32 * 10.0) as usize {
-        let b = bass.tick() * db2lin(0.);
-        let t = tenor.tick() * db2lin(-4.);
-        let a = alto.tick() * db2lin(-4.);
-        let s = soprano.tick() * db2lin(1.);
-        let solo_gain = 0.6;
+    reverb.size = 0.95;
 
-        let sum = (s + a + t + b) * 0.2;
-        let (rvb, _) = reverb.tick(sum, sum);
-        wav.tick(sum*db2lin(-1.0) + rvb * db2lin(-18.));
+    let mut hp1 = ButterworthHighPass::new(sr);
+    hp1.set_freq(600.);
+    let mut hp2 = ButterworthHighPass::new(sr);
+    hp1.set_freq(300.);
+
+    for _ in 0 .. (sr as f32 * 35.0) as usize {
+        let phs = clk.tick();
+
+        let pitch = gst_sop.tick(phs);
+        soprano.pitch = base_pitch as f32 + pitch;
+
+        let pitch = gst_alt.tick(phs);
+        alto.pitch = base_pitch as f32 + pitch;
+
+        let pitch = gst_ten.tick(phs);
+        tenor.pitch = (base_pitch - 12) as f32 + pitch;
+
+        let pitch = gst_bas.tick(phs);
+        bass.pitch = (base_pitch - 12) as f32 + pitch;
+
+        let b = bass.tick() * db2lin(3.);
+        let t = tenor.tick() * db2lin(-1.);
+        let a = alto.tick() * db2lin(0.);
+
+        let s = soprano.tick() * db2lin(5.);
+
+        let sa = hp1.tick(a + s);
+        let sum = (sa + b + t) * db2lin(-15.);
+        //let sum = (b) * db2lin(-13.);
+        let rvbin = hp2.tick(sum);
+        let (rvb, _) = reverb.tick(rvbin, rvbin);
+        let rvb = dcblk.tick(rvb);
+        //let out = sum;
+        let out = sum + rvb * db2lin(-14.);
+        let out = out * db2lin(-1.);
+        wav.tick(out);
     }
 }

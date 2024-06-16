@@ -10,6 +10,7 @@ pub struct Voice {
     pub nose: Nose,
     pub pitch: f32,
     phasor: Phasor,
+    vibdepth: f32,
 }
 
 impl Voice {
@@ -20,6 +21,7 @@ impl Voice {
             nose: Nose::new(sr, length_cm * 0.63, oversample),
             phasor: Phasor::new(sr, 0.0),
             pitch: 60.0,
+            vibdepth: 0.03,
         };
 
         v.glottis.set_shape(0.476);
@@ -33,9 +35,13 @@ impl Voice {
         self.phasor.set_freq(rate);
     }
 
+    pub fn vibrato_depth(&mut self, depth: f32) {
+        self.vibdepth = depth;
+    }
+
     pub fn tick(&mut self) -> f32 {
         let phs = self.phasor.tick();
-        let vib = (phs * 2.0*PI).sin() * 0.03;
+        let vib = (phs * 2.0*PI).sin() * self.vibdepth;
         self.glottis.set_pitch(self.pitch + vib);
         let g = self.glottis.tick();
         let t = self.tract.tick(g);
