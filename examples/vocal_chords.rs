@@ -12,7 +12,6 @@ fn pitch_gestures(chords: &[[i16;4]]) -> Vec<Vec<GestureVertex>>
     let mut bas = vec![];
     let mut paths = vec![];
 
-   
     for chord in chords.iter() {
         bas.push(GestureVertex {
             val: chord[0] as f32,
@@ -56,10 +55,10 @@ fn main() {
     let oversample = 2;
     let tract_cm_tenor = 16.0;
     let tract_cm_bass = 18.3;
-    let tract_cm_alto = 14.3;
+    let tract_cm_alto = 14.;
     let tract_cm_soprano = 12.9;
-    //let chord = [0, 7, 0, 4]; 
-    //let chord = [0, 9, 2, 7]; 
+    //let chord = [0, 7, 0, 4];
+    //let chord = [0, 9, 2, 7];
     let base_pitch = 63;
     let mut reverb = BigVerb::new(sr);
     let mut clk = Phasor::new(sr, 0.0);
@@ -70,9 +69,7 @@ fn main() {
         [0, 7, 0, 4],
         [-2, 7, 0, 2],
         [0, 7, 4, 5],
-        [0, 7, 2, 4],
-
-        [0, 7, 4, 7],
+        [0, 4, 5, 7],
         [-4, 3, 0, 8],
         [-5, 5, 2, 10],
         [-12, 0, 4, 12],
@@ -82,14 +79,16 @@ fn main() {
         [-12, 12, 4, 12],
         [-12, 16, 4, 12],
         [-12, 16, 2, 12],
-        [-12, 16, 2, 12],
-        [-12, 16, 2, 12],
+        [-12, 16, 5, 12],
+        [-12, 16, 5, 12],
+        [-12, 16, 5, 12],
+        [-12, 16, 5, 12],
     ];
 
     let mut wav = MonoWav::new("vocal_chords.wav");
 
     let paths = pitch_gestures(&chords);
-    
+
     let mut gst_sop = LinearGesture::new();
     gst_sop.init(&paths[3]);
     let mut gst_alt = LinearGesture::new();
@@ -105,14 +104,23 @@ fn main() {
     let mut soprano = Voice::new(sr, tract_cm_soprano, oversample);
 
     let shape_ah_alto = [
-        1.225,
-        0.225,
-        0.392,
+        // 1.225,
+        // 0.225,
+        // 0.392,
+        // 0.5,
+        // 1.13,
+        // 2.059,
+        // 0.297,
+        // 1.392
+
+        0.768,
         0.5,
-        1.13,
-        2.059,
-        0.297,
-        1.392
+        0.5,
+        0.5,
+        1.454,
+        3.368,
+        3.082,
+        2.74
     ];
 
     let shape_ah_sop = [
@@ -167,7 +175,7 @@ fn main() {
 
     alto.tract.drm(&shape_ah_alto);
     alto.vibrato_rate(6.0);
-    alto.glottis.set_shape(0.4);
+    alto.glottis.set_shape(0.3);
     alto.glottis.set_aspiration(0.1);
     alto.glottis.srand(330303);
 
@@ -185,7 +193,7 @@ fn main() {
     let mut hp2 = ButterworthHighPass::new(sr);
     hp1.set_freq(300.);
 
-    for _ in 0 .. (sr as f32 * 35.0) as usize {
+    for _ in 0 .. (sr as f32 * 37.0) as usize {
         let phs = clk.tick();
 
         let pitch = gst_sop.tick(phs);
@@ -209,6 +217,7 @@ fn main() {
         let sa = hp1.tick(a + s);
         let sum = (sa + b + t) * db2lin(-15.);
         //let sum = (b) * db2lin(-13.);
+        //let sum = (a) * db2lin(-13.);
         let rvbin = hp2.tick(sum);
         let (rvb, _) = reverb.tick(rvbin, rvbin);
         let rvb = dcblk.tick(rvb);
