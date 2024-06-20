@@ -1,5 +1,6 @@
 use std::f32::consts::PI;
 use crate::Nose;
+use crate::Smoother;
 
 const SPEED_OF_SOUND: f32 = 343.0; /* m/s @ 20C */
 const LIP_REFLECTION: f32 = -0.85;
@@ -20,7 +21,8 @@ pub struct Tract {
 
     reflections: Vec<f32>,
 
-    // TODO: move diameters to another interface?
+    // TODO: maybe move diameters to another interface?
+    // for now, it's convenient to have it here for tongue control
     // task id: create-diams-interface
     diams: Vec<f32>,
 
@@ -33,6 +35,11 @@ pub struct Tract {
     tpidsr: f32,
     oversample: u16,
     sr: usize,
+    pub tongue_smooth_amt: f32,
+    tongue_x: f32,
+    tongue_y: f32,
+    tongue_smoother_x: Smoother,
+    tongue_smoother_y: Smoother,
 }
 
 impl Tract {
@@ -61,6 +68,11 @@ impl Tract {
             tractlen: tractlen,
             tractlen_max: tractlen,
             sr: sr,
+            tongue_smooth_amt: 0.0,
+            tongue_smoother_x: Smoother::new(sr),
+            tongue_smoother_y: Smoother::new(sr),
+            tongue_x: 0.0,
+            tongue_y: 0.0,
         };
 
         tr.setup_antialiasing_filter(sr);
@@ -78,9 +90,7 @@ impl Tract {
         self.yt1 = 0.0;
     }
 
-    // TODO: maybe take in diameters as an argument?
-    #[allow(dead_code)]
-    fn compute_areas_from_diams(&mut self) {
+    pub fn apply_diameters(&mut self) {
         let a = &mut self.areas;
         let d = &mut self.diams;
 
@@ -150,6 +160,7 @@ impl Tract {
     pub fn tick(&mut self, sig: f32) -> f32 {
         let mut out = 0.0;
 
+        self.tongue_smoothing();
         for _ in 0 .. self.oversample {
             //self.compute_areas_from_diams();
             self.generate_reflection_coefficients();
@@ -165,8 +176,21 @@ impl Tract {
         out
     }
 
+    fn tongue_smoothing(&mut self) {
+        if self.tongue_smooth_amt > 0.0 {
+            self.tongue_smoother_x.set_smooth(self.tongue_smooth_amt);
+            self.tongue_smoother_y.set_smooth(self.tongue_smooth_amt);
+            let tx = self.tongue_smoother_x.tick(self.tongue_x);
+            let ty = self.tongue_smoother_y.tick(self.tongue_y);
+            self.compute_tongue_shape(tx, ty);
+        }
+
+    }
+
     pub fn tick_with_nose(&mut self, nose: &mut Nose, sig: f32) -> f32 {
         let mut out = 0.0;
+
+        self.tongue_smoothing();
 
         // TODO: move nose_start to somewhere else
         // 17 / 44
@@ -203,13 +227,39 @@ impl Tract {
         // TODO: apply nasal component with velum control
         out
     }
-
     pub fn tongue_shape(&mut self, pos: f32, diam: f32) {
-        let pos = 12.0 + 16.0*pos;
+        let pos = pos.clamp(0.0, 1.0);
+        let diam = diam.clamp(0.0, 1.0);
+
+        self.tongue_x = pos;
+        self.tongue_y = diam;
+
+        if self.tongue_smooth_amt > 0.0 {
+            // self.tongue_smoother_x.snap_to_value(self.tongue_x);
+            // self.tongue_smoother_y.snap_to_value(self.tongue_y);
+            return;
+        }
+
+        self.compute_tongue_shape(pos, diam);
+    }
+
+    pub fn set_tongue_smooth(&mut self, smooth: f32) {
+        if self.tongue_smooth_amt <= 0.0 {
+            self.tongue_smoother_x.snap_to_value(self.tongue_x);
+            self.tongue_smoother_y.snap_to_value(self.tongue_y);
+        }
+        self.tongue_smooth_amt = smooth;
+    }
+
+    fn compute_tongue_shape(&mut self, pos: f32, diam: f32) {
+        // Adapted from original PT code, which used
+        // hard coded constants relative to size 44
+        let tract_scaler = self.tractlen as f32 / 44.0;
+        let pos = (12.0 + 16.0*pos) * tract_scaler;
         let diam = 3.5 * diam;
-        let blade_start = 10;
-        let lip_start = 39;
-        let tip_start = 32;
+        let blade_start = (10.0 * tract_scaler) as usize;
+        let lip_start = (39.0 * tract_scaler) as usize;
+        let tip_start = (32.0 * tract_scaler) as usize;
         let tip_blade_delta = (tip_start - blade_start) as f32;
         let fixed_tongue_diam = 2.0 + (diam - 2.0) / 1.5;
 
@@ -229,6 +279,8 @@ impl Tract {
 
             self.diams[i] = 1.5 - curve;
         }
+
+        self.apply_diameters();
 
     }
 

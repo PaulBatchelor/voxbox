@@ -44,6 +44,7 @@ impl Voice {
         let vib = (phs * 2.0*PI).sin() * self.vibdepth;
         self.glottis.set_pitch(self.pitch + vib);
         let g = self.glottis.tick();
+        // TODO: use with nose
         let t = self.tract.tick(g);
         t
     }
