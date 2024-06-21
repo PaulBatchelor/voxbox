@@ -6,6 +6,15 @@ const SPEED_OF_SOUND: f32 = 343.0; /* m/s @ 20C */
 const LIP_REFLECTION: f32 = -0.85;
 const GLOTTAL_REFLECTION: f32 = 0.75;
 
+fn interpolation_values(tractlenf: f32) -> (usize, f32) {
+    let pos = tractlenf - 1.0;
+    let ipos = pos as usize;
+    let fpos = pos - ipos as f32;
+
+    (ipos, fpos)
+}
+
+
 pub struct Tract {
     // TODO: how to use dynbox instead?
     //
@@ -125,18 +134,26 @@ impl Tract {
         let j_l = &mut self.junc_left;
         let j_r = &mut self.junc_right;
 
+        let (ipos, fpos) = interpolation_values(self.tractlenf);
         let w_l = &mut self.left;
         let w_r = &mut self.right;
-        let len = self.tractlen as usize;
+        //let len = self.tractlen as usize;
 
         // reflection coefficients
         let glot_reflection = GLOTTAL_REFLECTION;
         let lip_reflection = LIP_REFLECTION;
 
         j_r[0] = w_l[0] * glot_reflection + sig;
-        j_l[len - 1] = w_r[len - 1] * lip_reflection;
+
+        // TODO interpolate... somehow
+        // This might be wrong
+        //j_l[len - 1] = w_r[len - 1] * lip_reflection;
+        j_l[ipos] = w_r[ipos] * lip_reflection * (1.0 - fpos);
+        j_l[ipos+1] = w_r[ipos+1] * lip_reflection * fpos;
 
         let r = &self.reflections;
+
+        // TODO how to factor in interpolation here?
         for i in 1 .. self.tractlen as usize {
             let w = r[i] * (w_r[i - 1] + w_l[i]);
             j_r[i] = w_r[i - 1] - w;
@@ -162,10 +179,7 @@ impl Tract {
     }
 
     fn tract_output(&mut self) -> f32 {
-        let pos = self.tractlenf - 1.0;
-        let ipos = pos as usize;
-        let fpos = pos - ipos as f32;
-
+        let (ipos, fpos) = interpolation_values(self.tractlenf);
         let x1 = self.right[ipos];
         let x2 = self.right[ipos + 1];
 
