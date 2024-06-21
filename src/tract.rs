@@ -17,14 +17,10 @@ pub struct Tract {
     pub areas: Vec<f32>,
 
     tractlen: usize,
+    tractlenf: f32,
     tractlen_max: usize,
 
     reflections: Vec<f32>,
-
-    // TODO: maybe move diameters to another interface?
-    // for now, it's convenient to have it here for tongue control
-    // task id: create-diams-interface
-    diams: Vec<f32>,
 
     // anti-aliasing (aliasing supression)
     hp: f32,
@@ -35,6 +31,14 @@ pub struct Tract {
     tpidsr: f32,
     oversample: u16,
     sr: usize,
+
+
+    // TODO: maybe move diameters to another interface?
+    // for now, it's convenient to have it here for tongue control
+    // task id: create-diams-interface
+    diams: Vec<f32>,
+    // TODO: okay, this is starting to feel like it
+    // wants another home
     pub tongue_smooth_amt: f32,
     tongue_x: f32,
     tongue_y: f32,
@@ -66,6 +70,7 @@ impl Tract {
             prvhp: 0.0,
             tpidsr: 2.0 * PI / (sr as f32 * oversample as f32),
             tractlen: tractlen,
+            tractlenf: tractlen as f32,
             tractlen_max: tractlen,
             sr: sr,
             tongue_smooth_amt: 0.0,
@@ -156,6 +161,18 @@ impl Tract {
         self.yt1
     }
 
+    fn tract_output(&mut self) -> f32 {
+        let pos = self.tractlenf - 1.0;
+        let ipos = pos as usize;
+        let fpos = pos - ipos as f32;
+
+        let x1 = self.right[ipos];
+        let x2 = self.right[ipos + 1];
+
+        //dbg!(pos, ipos, fpos);
+        //self.right[self.tractlen as usize - 1]
+        (1.0 - fpos)*x1 + fpos*x2
+    }
 
     pub fn tick(&mut self, sig: f32) -> f32 {
         let mut out = 0.0;
@@ -167,7 +184,7 @@ impl Tract {
             self.compute_scattering_junctions(sig);
             self.update_waveguide();
 
-            out = self.right[self.tractlen as usize - 1];
+            out = self.tract_output();
 
             // apply crude anti-aliasing filter (simple 1-pole)
             out = self.aliasing_suppression(out);
@@ -345,17 +362,27 @@ impl Tract {
     }
 
     pub fn set_length(&mut self, len_cm: f32) {
-        let tractlen =
+        let mut tractlen =
             (((len_cm * 0.01) /
               (SPEED_OF_SOUND as f32 /
-               (self.sr as f32 * self.oversample as f32)))).floor() + 1.0;
+               (self.sr as f32 * self.oversample as f32)))) + 1.0;
 
-        let mut tractlen = tractlen as usize;
-
-        if tractlen > self.tractlen_max {
-            tractlen = self.tractlen_max;
+        if tractlen < 2.0 {
+            tractlen = 2.0;
         }
 
-        self.tractlen = tractlen;
+        if tractlen > self.tractlen_max as f32 {
+            tractlen = self.tractlen_max as f32;
+        }
+
+        self.tractlenf = tractlen;
+
+        // Can't compute half a sample, it's all or
+        // nothing. Use ceil to bump up to get the
+        // fractional component at the end.
+        let tractleni = tractlen.ceil() as usize;
+
+
+        self.tractlen = tractleni;
     }
 }
