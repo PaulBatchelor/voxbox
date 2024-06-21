@@ -15,7 +15,10 @@ pub struct Nose {
     reflection_right: f32,
     reflection_nose: f32,
     length: usize,
+    length_max: usize,
     velum: f32,
+    sr: usize,
+    oversample:u16,
 }
 
 impl Nose {
@@ -34,10 +37,13 @@ impl Nose {
             reflections: vec![0.0; nose_length],
             diams: vec![0.0; nose_length],
             length: nose_length,
+            length_max: nose_length,
             reflection_left: 0.0,
             reflection_right: 0.0,
             reflection_nose: 0.0,
             velum: 0.0,
+            sr: sr,
+            oversample: oversample,
         };
 
         ns.setup_shape();
@@ -205,5 +211,20 @@ impl Nose {
         }
 
         self.right[self.length - 1]
+    }
+
+    pub fn set_length(&mut self, len_cm: f32) {
+        let tractlen =
+            (((len_cm * 0.01) /
+              (SPEED_OF_SOUND as f32 /
+               (self.sr as f32 * self.oversample as f32)))).floor() + 1.0;
+
+        let mut tractlen = tractlen as usize;
+
+        if tractlen > self.length_max {
+            tractlen = self.length_max;
+        }
+
+        self.length = tractlen;
     }
 }

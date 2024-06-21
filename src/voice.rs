@@ -45,8 +45,13 @@ impl Voice {
         self.glottis.set_pitch(self.pitch + vib);
         let g = self.glottis.tick();
         // TODO: use with nose
-        let t = self.tract.tick(g);
+        let t = self.tract.tick_with_nose(&mut self.nose, g);
         t
+    }
+
+    pub fn set_length(&mut self, len_cm: f32) {
+        self.tract.set_length(len_cm);
+        self.nose.set_length(len_cm*0.63);
     }
 }
 
