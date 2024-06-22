@@ -10,6 +10,7 @@ mod rephasor;
 mod nose;
 mod voice;
 mod gesture;
+mod delay;
 
 pub use monowav::*;
 pub use phasor::*;
@@ -23,3 +24,4 @@ pub use nose::*;
 pub use voice::*;
 pub use gesture::*;
 pub use butterworth::*;
+pub use delay::*;
