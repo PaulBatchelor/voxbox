@@ -4,7 +4,7 @@ fn db2lin(db: f32) -> f32 {
     (10.0_f32).powf(db / 20.)
 }
 
-fn pitch_gestures(chords: &[[i16;4]]) -> Vec<Vec<GestureVertex>>
+fn pitch_gestures(chords: &[[i16;4]]) -> Vec<Vec<GestureVertex<f32>>>
 {
     let mut sop = vec![];
     let mut alt = vec![];

@@ -1,6 +1,6 @@
 use voxbox::*;
 
-fn vtx (val: f32, dur: &[u32], bhvr: Behavior) -> GestureVertex {
+fn vtx (val: f32, dur: &[u32], bhvr: Behavior) -> GestureVertex<f32> {
     GestureVertex{val:val, num:dur[1], den:dur[0], bhvr:bhvr}
 }
 
@@ -21,11 +21,11 @@ fn main() {
     let mut reverb = BigVerb::new(sr);
 
     voice.glottis.set_aspiration(0.3);
-    let nt = |nn: u16, dur| -> GestureVertex {
+    let nt = |nn: u16, dur| -> GestureVertex<f32> {
         vtx(base + nn as f32, dur, gm)
     };
 
-    let ntb = |nn: u16, dur, bvr| -> GestureVertex {
+    let ntb = |nn: u16, dur, bvr| -> GestureVertex<f32> {
         vtx(base + nn as f32, dur, bvr)
     };
 

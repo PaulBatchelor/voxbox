@@ -12,33 +12,33 @@ pub enum Behavior {
    GlissHuge,
 }
 
-pub struct Gesture {
-    prev: f32,
-    next: f32,
-    ratemul: f32,
+pub struct Gesture<T> {
+    prev: T,
+    next: T,
+    ratemul: T,
     behavior: Behavior,
     rephasor: RePhasor,
-    lphs: f32,
+    lphs: T,
     next_behavior: Behavior,
 }
 
 pub struct LinearGesture<'a> {
-    gest: Gesture,
+    gest: Gesture<f32>,
     //path: &'a [GestureVertex],
-    path: Option<&'a Vec<GestureVertex>>,
+    path: Option<&'a Vec<GestureVertex<f32>>>,
     pos: usize,
 }
 
 #[derive(Copy, Clone)]
-pub struct GestureVertex {
-    pub val: f32,
+pub struct GestureVertex<T> {
+    pub val: T,
     pub num: u32,
     pub den: u32,
     pub bhvr: Behavior,
 }
 
 pub trait SignalGenerator {
-    fn next_vertex(&mut self) -> GestureVertex;
+    fn next_vertex(&mut self) -> GestureVertex<f32>;
     fn compute_rephasor(&mut self, clk: f32) -> f32;
     fn interpolate(&mut self, phs: f32) -> f32;
     fn new_period(&mut self, phs: f32) -> bool;
@@ -51,16 +51,16 @@ pub trait SignalGenerator {
         }
         self.interpolate(phs)
     }
-    fn update(&mut self, vtx: &GestureVertex);
+    fn update(&mut self, vtx: &GestureVertex<f32>);
 }
 
 
-impl SignalGenerator for Gesture {
+impl SignalGenerator for Gesture<f32> {
     fn new_period(&mut self, phs: f32) -> bool {
         self.lphs > phs
     }
 
-    fn next_vertex(&mut self) -> GestureVertex {
+    fn next_vertex(&mut self) -> GestureVertex<f32> {
         GestureVertex {
             val: 0.0, num: 1, den: 1, bhvr: Behavior::Linear
         }
@@ -83,7 +83,7 @@ impl SignalGenerator for Gesture {
         out
     }
 
-    fn update(&mut self, vtx: &GestureVertex) {
+    fn update(&mut self, vtx: &GestureVertex<f32>) {
         // Set the previous rate multiplier
         // because we want this relationship: A -> A_rm (A_bhvr) -> B
         self.rephasor.set_scale(self.ratemul);
@@ -98,7 +98,7 @@ impl SignalGenerator for Gesture {
 
 }
 
-impl Gesture {
+impl Gesture<f32> {
     pub fn new() -> Self {
         let g = Gesture {
             prev: 0.0,
@@ -179,7 +179,7 @@ impl<'a> LinearGesture<'a> {
         lg
     }
 
-    pub fn init(&mut self, path: &'a Vec<GestureVertex>) {
+    pub fn init(&mut self, path: &'a Vec<GestureVertex<f32>>) {
         self.path = Some(path);
         // get vertex, now next vertex is on deck
         let a = self.next_vertex();
@@ -194,7 +194,7 @@ impl<'a> LinearGesture<'a> {
 }
 
 impl SignalGenerator for LinearGesture<'_> {
-    fn next_vertex(&mut self) -> GestureVertex {
+    fn next_vertex(&mut self) -> GestureVertex<f32> {
         let next = match self.path {
             Some(x) => {
                 let nxt = x[self.pos];
@@ -226,7 +226,7 @@ impl SignalGenerator for LinearGesture<'_> {
         self.gest.new_period(phs)
     }
 
-    fn update(&mut self, vtx: &GestureVertex) {
+    fn update(&mut self, vtx: &GestureVertex<f32>) {
         self.gest.update(vtx);
     }
 
