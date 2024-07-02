@@ -1,5 +1,20 @@
 use voxbox::*;
 
+fn gliss_it(phs: f32, glisspos: f32) -> f32 {
+    let mut a;
+    if phs < glisspos {
+        a = 0.0;
+    } else {
+        a = phs - glisspos;
+        if a < 0.0 {
+            a = 0.0;
+        }
+        a /= 1.0 - glisspos;
+        a = a * a * a;
+    }
+    a
+}
+
 fn main() {
     let sr = 44100;
     let oversample = 2;
@@ -8,6 +23,12 @@ fn main() {
     let mut wav = MonoWav::new("chatter.wav");
 
     let mut voice = Voice::new(sr, tract_len, oversample);
+
+    let mut phasor = Phasor::new(sr, 0.0);
+
+    let mut drm: [f32; 8] = [0.5; 8];
+
+    phasor.set_freq(3.0);
 
     let tiny_ah = [
         0.77,
@@ -55,14 +76,45 @@ fn main() {
 
     ];
 
+    let shapes = [
+        &tiny_ah,
+        &tiny_ieh,
+        &tiny_r4mod2,
+        &tiny_r4mod1,
+    ];
+
+    let mut cur = 0;
+    let mut nxt = 1;
+
+    let mut pphs = -1.;
+
     voice.tract.drm(&tiny_ieh);
     voice.tract.drm(&tiny_ah);
     voice.tract.drm(&tiny_r4mod1);
     voice.tract.drm(&tiny_r4mod2);
-    voice.glottis.set_pitch(63.0);
+    voice.pitch = 63.;
+
 
     for _ in 0 .. (sr as f32 * 5.0) as usize {
+        let phs = phasor.tick();
+        if phs < pphs {
+            cur += 1;
+            nxt += 1;
+            cur %= shapes.len();
+            nxt %= shapes.len();
+        }
+        let shp_a = shapes[cur];
+        let shp_b = shapes[nxt];
+        let alpha = gliss_it(phs, 0.8);
+        for i in 0..8 {
+            drm[i] =
+                (1. - alpha) * shp_a[i] +
+                alpha * shp_b[i];
+
+        }
+        voice.tract.drm(&drm);
         let out = voice.tick() * 0.5;
         wav.tick(out);
+        pphs = phs;
     }
 }
