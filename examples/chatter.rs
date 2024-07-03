@@ -24,11 +24,25 @@ fn main() {
 
     let mut voice = Voice::new(sr, tract_len, oversample);
 
-    let mut phasor = Phasor::new(sr, 0.0);
+    let mut phasor = RandomPhasor::new(sr, 0.0);
+
+    let mut chooser = LinearCongruentialGenerator::new();
+
+    chooser.seed(4444);
+
+    phasor.min_freq = 3.0;
+    phasor.max_freq = 10.0;
 
     let mut drm: [f32; 8] = [0.5; 8];
 
-    phasor.set_freq(3.0);
+    let mut freq_phasor = Phasor::new(sr, 0.);
+    let mut freq_randi= RandomLine::new();
+
+    freq_phasor.set_freq(1.);
+    freq_randi.min = -5.0;
+    freq_randi.max = 8.0;
+
+    //phasor.set_freq(3.0);
 
     let tiny_ah = [
         0.77,
@@ -98,13 +112,23 @@ fn main() {
     for _ in 0 .. (sr as f32 * 5.0) as usize {
         let phs = phasor.tick();
         if phs < pphs {
-            cur += 1;
-            nxt += 1;
+            cur = nxt;
+            nxt = (chooser.randf() * shapes.len() as f32) as usize;
             cur %= shapes.len();
             nxt %= shapes.len();
+            // cur += 1;
+            // nxt += 1;
+            // cur %= shapes.len();
+            // nxt %= shapes.len();
         }
         let shp_a = shapes[cur];
         let shp_b = shapes[nxt];
+
+        let frq_phs = freq_phasor.tick();
+        let frq_jit = freq_randi.tick(frq_phs);
+
+        voice.pitch = 63.0 + frq_jit;
+
         let alpha = gliss_it(phs, 0.8);
         for i in 0..8 {
             drm[i] =

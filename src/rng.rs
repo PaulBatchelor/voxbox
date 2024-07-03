@@ -35,7 +35,7 @@ pub struct RandomLine {
 }
 
 impl RandomLine {
-    pub fn new(&mut self) -> Self {
+    pub fn new() -> Self {
         RandomLine {
             lphs: -1.0,
             val_a: 0.0,
@@ -79,4 +79,63 @@ impl RandomLine {
 
         out
     }
+}
+
+
+// TODO copy-pasted from Phasor. De-duplication?
+pub struct RandomPhasor {
+    phs: f32,
+    onedsr: f32,
+    rng: LinearCongruentialGenerator,
+    pub min_freq: f32,
+    pub max_freq: f32,
+    pub rval: f32,
+}
+
+impl RandomPhasor {
+    pub fn new(sr: usize, iphs: f32) -> Self {
+        RandomPhasor {
+            phs: iphs,
+            onedsr: 1.0 / sr as f32,
+            rng: LinearCongruentialGenerator::new(),
+            min_freq: 1.,
+            max_freq: 1.,
+            rval: -1.,
+        }
+    }
+
+    pub fn seed(&mut self, val: u32) {
+        self.rng.seed(val);
+    }
+
+    pub fn tick(&mut self) -> f32 {
+
+        if self.rval < 0. {
+            self.rval = self.rng.randf();
+        }
+
+        let freq =
+            (self.max_freq - self.min_freq)*
+            self.rval +
+            self.min_freq;
+        let incr = freq * self.onedsr;
+        let mut phs = self.phs;
+
+        let out = phs;
+
+        phs += incr;
+
+        if phs >= 1.0 {
+            phs -= 1.0;
+            self.rval = -1.;
+        } else if phs < 0.0 {
+            phs += 1.0;
+            self.rval = -1.;
+        }
+
+        self.phs = phs;
+
+        out
+    }
+
 }
