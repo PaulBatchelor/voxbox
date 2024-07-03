@@ -35,14 +35,12 @@ fn main() {
 
     let mut drm: [f32; 8] = [0.5; 8];
 
-    let mut freq_phasor = Phasor::new(sr, 0.);
-    let mut freq_randi= RandomLine::new();
+    let mut jit_freq = Jitter::new(sr);
 
-    freq_phasor.set_freq(1.);
-    freq_randi.min = -5.0;
-    freq_randi.max = 8.0;
+    jit_freq.seed(4444, 5555);
 
-    //phasor.set_freq(3.0);
+    jit_freq.range_amplitude(-5., 12.);
+    jit_freq.range_rate(3., 10.);
 
     let tiny_ah = [
         0.77,
@@ -124,10 +122,11 @@ fn main() {
         let shp_a = shapes[cur];
         let shp_b = shapes[nxt];
 
-        let frq_phs = freq_phasor.tick();
-        let frq_jit = freq_randi.tick(frq_phs);
+        // let frq_phs = freq_phasor.tick();
+        // let frq_jit = freq_randi.tick(frq_phs);
 
-        voice.pitch = 63.0 + frq_jit;
+        let jf = jit_freq.tick();
+        voice.pitch = 63.0 + jf;
 
         let alpha = gliss_it(phs, 0.8);
         for i in 0..8 {

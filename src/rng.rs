@@ -139,3 +139,39 @@ impl RandomPhasor {
     }
 
 }
+
+pub struct Jitter {
+    phasor: RandomPhasor,
+    linseg: RandomLine,
+}
+
+impl Jitter {
+    pub fn new(sr: usize) -> Self {
+        Jitter {
+            phasor: RandomPhasor::new(sr, 0.),
+            linseg: RandomLine::new(),
+        }
+    }
+
+    pub fn range_rate(&mut self, min: f32, max: f32) {
+        self.phasor.min_freq = min;
+        self.phasor.max_freq = max;
+    }
+
+    pub fn range_amplitude(&mut self, min: f32, max: f32) {
+        self.linseg.min = min;
+        self.linseg.max = max;
+    }
+
+    pub fn tick(&mut self) -> f32 {
+        let phs = self.phasor.tick();
+        let out = self.linseg.tick(phs);
+        out
+    }
+
+    pub fn seed(&mut self, lseed: u32, pseed: u32) {
+        self.linseg.seed(lseed);
+        self.phasor.seed(pseed);
+    }
+
+}
