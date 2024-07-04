@@ -21,13 +21,15 @@ struct ChatterBox {
     chooser: LinearCongruentialGenerator,
     drm: [f32; 8],
     jit_freq: Jitter,
-    metro: Metro,
+    //metro: Metro,
     tgate: TriggerGate,
     env: Envelope,
     shapes: Vec<[f32; 8]>,
     cur: usize,
     nxt: usize,
     pphs: f32,
+    gate: u8,
+    pgate: u8,
 }
 
 impl ChatterBox {
@@ -40,13 +42,15 @@ impl ChatterBox {
             chooser: LinearCongruentialGenerator::new(),
             drm: [0.5; 8],
             jit_freq: Jitter::new(sr),
-            metro: Metro::new(sr),
+            //metro: Metro::new(sr),
             tgate: TriggerGate::new(sr),
             env: Envelope::new(sr),
             shapes: generate_shape_table(),
             pphs: -1.,
             cur: 0,
             nxt: 1,
+            gate: 0,
+            pgate: 0,
         };
 
         cb.shape_morpher.min_freq = 3.0;
@@ -55,7 +59,7 @@ impl ChatterBox {
         cb.jit_freq.seed(43438, 5555);
         cb.jit_freq.range_amplitude(-5., 12.);
         cb.jit_freq.range_rate(3., 10.);
-        cb.metro.set_rate(1.0);
+        //cb.metro.set_rate(1.0);
         cb.tgate.duration = 0.4;
         cb.env.set_attack(0.01);
         cb.env.set_release(0.7);
@@ -63,9 +67,8 @@ impl ChatterBox {
         cb
     }
 
-    #[allow(dead_code)]
     pub fn poke(&mut self) {
-
+        self.gate = !self.gate;
     }
 
     pub fn tick(&mut self) -> f32 {
@@ -75,7 +78,7 @@ impl ChatterBox {
         let chooser = &mut self.chooser;
         let drm = &mut self.drm;
         let jit_freq = &mut self.jit_freq;
-        let metro = &mut self.metro;
+        //let metro = &mut self.metro;
         let tgate = &mut self.tgate;
         let env = &mut self.env;
 
@@ -83,6 +86,8 @@ impl ChatterBox {
         let cur = &mut self.cur;
         let nxt = &mut self.nxt;
         let pphs = &mut self.pphs;
+        let gate = &self.gate;
+        let pgate = &mut self.pgate;
 
         let phs = shape_morpher.tick();
         if phs < *pphs {
@@ -106,11 +111,16 @@ impl ChatterBox {
 
         voice.tract.drm(drm);
 
-        let t = metro.tick();
+        let t = if *pgate != *gate {
+            1.0
+        } else {
+            0.0
+        };
         let gt = tgate.tick(t);
         let ev = env.tick(gt);
         let out = voice.tick() * 0.5 * ev;
         *pphs = phs;
+        *pgate = *gate;
         out
     }
 }
@@ -175,8 +185,20 @@ fn main() {
     let sr = 44100;
     let mut cb = ChatterBox::new(sr);
     let mut wav = MonoWav::new("chatter.wav");
+    let mut metro = Metro::new(sr);
+
+    let mut jit_rate = Jitter::new(sr);
+
+    jit_rate.range_rate(1.0, 4.0);
+    jit_rate.range_amplitude(0.8, 2.0);
 
     for _ in 0 .. (sr as f32 * 5.0) as usize {
+        metro.set_rate(jit_rate.tick());
+        let trig = metro.tick();
+
+        if trig > 0. {
+            cb.poke();
+        }
         wav.tick(cb.tick());
     }
 }
