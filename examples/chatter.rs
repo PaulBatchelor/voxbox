@@ -48,6 +48,10 @@ fn main() {
     let mut tgate = TriggerGate::new(sr);
     tgate.duration = 0.3;
 
+    let mut env = Envelope::new(sr);
+    env.set_attack(0.01);
+    env.set_release(0.5);
+
     let tiny_ah = [
         0.77,
         0.855,
@@ -146,7 +150,8 @@ fn main() {
 
         let t = metro.tick();
         let gt = tgate.tick(t);
-        let out = voice.tick() * 0.5 * gt;
+        let ev = env.tick(gt);
+        let out = voice.tick() * 0.5 * ev;
         wav.tick(out);
         pphs = phs;
     }

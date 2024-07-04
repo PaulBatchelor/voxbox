@@ -12,6 +12,7 @@ mod voice;
 mod gesture;
 mod rng;
 mod tgate;
+mod envelope;
 
 pub use monowav::*;
 pub use phasor::*;
@@ -27,3 +28,4 @@ pub use gesture::*;
 pub use butterworth::*;
 pub use rng::*;
 pub use tgate::*;
+pub use envelope::*;
