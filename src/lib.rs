@@ -11,6 +11,7 @@ mod nose;
 mod voice;
 mod gesture;
 mod rng;
+mod tgate;
 
 pub use monowav::*;
 pub use phasor::*;
@@ -25,3 +26,4 @@ pub use voice::*;
 pub use gesture::*;
 pub use butterworth::*;
 pub use rng::*;
+pub use tgate::*;

@@ -1,7 +1,7 @@
 pub struct Phasor {
     freq: f32,
     phs: f32,
-    onedsr: f32 ,
+    onedsr: f32,
 }
 
 impl Phasor {
@@ -36,4 +36,53 @@ impl Phasor {
         out
     }
 
+}
+
+pub struct PhasorTrig {
+    lphs: f32,
+}
+
+impl PhasorTrig {
+    pub fn new() -> Self {
+        PhasorTrig {
+            lphs: -1.0,
+        }
+    }
+
+    pub fn tick(&mut self, phs: f32) -> f32 {
+        let lphs = self.lphs;
+        let out = if lphs < 0.0 || lphs > phs {
+            1.0
+        }  else {
+            0.0
+        };
+
+        self.lphs = phs;
+
+        out
+    }
+
+}
+
+pub struct Metro {
+    phs: Phasor,
+    trig: PhasorTrig,
+}
+
+impl Metro {
+    pub fn new(sr: usize) -> Self {
+        Metro {
+            phs: Phasor::new(sr, 0.),
+            trig: PhasorTrig::new(),
+        }
+    }
+
+    pub fn tick(&mut self) -> f32 {
+        let phs = self.phs.tick();
+        self.trig.tick(phs)
+    }
+
+    pub fn set_rate(&mut self, rate: f32) {
+        self.phs.set_freq(rate)
+    }
 }

@@ -42,6 +42,12 @@ fn main() {
     jit_freq.range_amplitude(-5., 12.);
     jit_freq.range_rate(3., 10.);
 
+    let mut metro = Metro::new(sr);
+    metro.set_rate(1.0);
+
+    let mut tgate = TriggerGate::new(sr);
+    tgate.duration = 0.3;
+
     let tiny_ah = [
         0.77,
         0.855,
@@ -135,8 +141,12 @@ fn main() {
                 alpha * shp_b[i];
 
         }
+
         voice.tract.drm(&drm);
-        let out = voice.tick() * 0.5;
+
+        let t = metro.tick();
+        let gt = tgate.tick(t);
+        let out = voice.tick() * 0.5 * gt;
         wav.tick(out);
         pphs = phs;
     }
