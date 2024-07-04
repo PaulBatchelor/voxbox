@@ -15,43 +15,107 @@ fn gliss_it(phs: f32, glisspos: f32) -> f32 {
     a
 }
 
-fn main() {
-    let sr = 44100;
-    let oversample = 2;
-    let tract_len = 8.7;
+struct ChatterBox {
+    voice: Voice,
+    shape_morpher: RandomPhasor,
+    chooser: LinearCongruentialGenerator,
+    drm: [f32; 8],
+    jit_freq: Jitter,
+    metro: Metro,
+    tgate: TriggerGate,
+    env: Envelope,
+    shapes: Vec<[f32; 8]>,
+    cur: usize,
+    nxt: usize,
+    pphs: f32,
+}
 
-    let mut wav = MonoWav::new("chatter.wav");
+impl ChatterBox {
+    pub fn new(sr: usize) -> Self {
+        let oversample = 2;
+        let tract_len = 8.7;
+        let mut cb = ChatterBox {
+            voice: Voice::new(sr, tract_len, oversample),
+            shape_morpher: RandomPhasor::new(sr, 0.),
+            chooser: LinearCongruentialGenerator::new(),
+            drm: [0.5; 8],
+            jit_freq: Jitter::new(sr),
+            metro: Metro::new(sr),
+            tgate: TriggerGate::new(sr),
+            env: Envelope::new(sr),
+            shapes: generate_shape_table(),
+            pphs: -1.,
+            cur: 0,
+            nxt: 1,
+        };
 
-    let mut voice = Voice::new(sr, tract_len, oversample);
+        cb.shape_morpher.min_freq = 3.0;
+        cb.shape_morpher.max_freq = 10.0;
+        cb.chooser.seed(4444);
+        cb.jit_freq.seed(43438, 5555);
+        cb.jit_freq.range_amplitude(-5., 12.);
+        cb.jit_freq.range_rate(3., 10.);
+        cb.metro.set_rate(1.0);
+        cb.tgate.duration = 0.4;
+        cb.env.set_attack(0.01);
+        cb.env.set_release(0.7);
+        cb.voice.pitch = 63.;
+        cb
+    }
 
-    let mut phasor = RandomPhasor::new(sr, 0.0);
+    #[allow(dead_code)]
+    pub fn poke(&mut self) {
 
-    let mut chooser = LinearCongruentialGenerator::new();
+    }
 
-    chooser.seed(4444);
+    pub fn tick(&mut self) -> f32 {
+        let voice = &mut self.voice;
+        let shape_morpher = &mut self.shape_morpher;
 
-    phasor.min_freq = 3.0;
-    phasor.max_freq = 10.0;
+        let chooser = &mut self.chooser;
+        let drm = &mut self.drm;
+        let jit_freq = &mut self.jit_freq;
+        let metro = &mut self.metro;
+        let tgate = &mut self.tgate;
+        let env = &mut self.env;
 
-    let mut drm: [f32; 8] = [0.5; 8];
+        let shapes = &mut self.shapes;
+        let cur = &mut self.cur;
+        let nxt = &mut self.nxt;
+        let pphs = &mut self.pphs;
 
-    let mut jit_freq = Jitter::new(sr);
+        let phs = shape_morpher.tick();
+        if phs < *pphs {
+            *cur = *nxt;
+            *nxt = (chooser.randf() * shapes.len() as f32) as usize;
+            *cur %= shapes.len();
+            *nxt %= shapes.len();
+        }
+        let shp_a = shapes[*cur];
+        let shp_b = shapes[*nxt];
 
-    jit_freq.seed(4444, 5555);
+        let jf = jit_freq.tick();
+        voice.pitch = 63.0 + jf;
 
-    jit_freq.range_amplitude(-5., 12.);
-    jit_freq.range_rate(3., 10.);
+        let alpha = gliss_it(phs, 0.8);
+        for i in 0..8 {
+            drm[i] =
+                (1. - alpha) * shp_a[i] +
+                alpha * shp_b[i];
+        }
 
-    let mut metro = Metro::new(sr);
-    metro.set_rate(1.0);
+        voice.tract.drm(drm);
 
-    let mut tgate = TriggerGate::new(sr);
-    tgate.duration = 0.3;
+        let t = metro.tick();
+        let gt = tgate.tick(t);
+        let ev = env.tick(gt);
+        let out = voice.tick() * 0.5 * ev;
+        *pphs = phs;
+        out
+    }
+}
 
-    let mut env = Envelope::new(sr);
-    env.set_attack(0.01);
-    env.set_release(0.5);
-
+fn generate_shape_table() -> Vec<[f32; 8]> {
     let tiny_ah = [
         0.77,
         0.855,
@@ -97,62 +161,22 @@ fn main() {
         0.685
 
     ];
-
-    let shapes = [
-        &tiny_ah,
-        &tiny_ieh,
-        &tiny_r4mod2,
-        &tiny_r4mod1,
+    let shapes = vec![
+        tiny_ah,
+        tiny_ieh,
+        tiny_r4mod2,
+        tiny_r4mod1,
     ];
 
-    let mut cur = 0;
-    let mut nxt = 1;
+    shapes
+}
 
-    let mut pphs = -1.;
-
-    voice.tract.drm(&tiny_ieh);
-    voice.tract.drm(&tiny_ah);
-    voice.tract.drm(&tiny_r4mod1);
-    voice.tract.drm(&tiny_r4mod2);
-    voice.pitch = 63.;
-
+fn main() {
+    let sr = 44100;
+    let mut cb = ChatterBox::new(sr);
+    let mut wav = MonoWav::new("chatter.wav");
 
     for _ in 0 .. (sr as f32 * 5.0) as usize {
-        let phs = phasor.tick();
-        if phs < pphs {
-            cur = nxt;
-            nxt = (chooser.randf() * shapes.len() as f32) as usize;
-            cur %= shapes.len();
-            nxt %= shapes.len();
-            // cur += 1;
-            // nxt += 1;
-            // cur %= shapes.len();
-            // nxt %= shapes.len();
-        }
-        let shp_a = shapes[cur];
-        let shp_b = shapes[nxt];
-
-        // let frq_phs = freq_phasor.tick();
-        // let frq_jit = freq_randi.tick(frq_phs);
-
-        let jf = jit_freq.tick();
-        voice.pitch = 63.0 + jf;
-
-        let alpha = gliss_it(phs, 0.8);
-        for i in 0..8 {
-            drm[i] =
-                (1. - alpha) * shp_a[i] +
-                alpha * shp_b[i];
-
-        }
-
-        voice.tract.drm(&drm);
-
-        let t = metro.tick();
-        let gt = tgate.tick(t);
-        let ev = env.tick(gt);
-        let out = voice.tick() * 0.5 * ev;
-        wav.tick(out);
-        pphs = phs;
+        wav.tick(cb.tick());
     }
 }
