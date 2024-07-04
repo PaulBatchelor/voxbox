@@ -21,7 +21,6 @@ struct ChatterBox {
     chooser: LinearCongruentialGenerator,
     drm: [f32; 8],
     jit_freq: Jitter,
-    //metro: Metro,
     tgate: TriggerGate,
     env: Envelope,
     shapes: Vec<[f32; 8]>,
@@ -42,7 +41,6 @@ impl ChatterBox {
             chooser: LinearCongruentialGenerator::new(),
             drm: [0.5; 8],
             jit_freq: Jitter::new(sr),
-            //metro: Metro::new(sr),
             tgate: TriggerGate::new(sr),
             env: Envelope::new(sr),
             shapes: generate_shape_table(),
@@ -59,7 +57,6 @@ impl ChatterBox {
         cb.jit_freq.seed(43438, 5555);
         cb.jit_freq.range_amplitude(-5., 12.);
         cb.jit_freq.range_rate(3., 10.);
-        //cb.metro.set_rate(1.0);
         cb.tgate.duration = 0.4;
         cb.env.set_attack(0.01);
         cb.env.set_release(0.7);
@@ -78,7 +75,6 @@ impl ChatterBox {
         let chooser = &mut self.chooser;
         let drm = &mut self.drm;
         let jit_freq = &mut self.jit_freq;
-        //let metro = &mut self.metro;
         let tgate = &mut self.tgate;
         let env = &mut self.env;
 
