@@ -86,7 +86,7 @@ struct BigVerbDelay {
 pub struct BigVerb {
     sr: usize,
     pub size: f32,
-    cutoff: f32,
+    pub cutoff: f32,
     pcutoff: f32,
     filt: f32,
     delay: [BigVerbDelay; 8],
