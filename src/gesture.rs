@@ -275,6 +275,47 @@ pub fn behavior_from_integer(bhvr: u16) -> Result<Behavior, u16> {
     }
 }
 
+#[no_mangle]
+pub extern "C" fn vb_gesture_builder_new() -> Box<LinearGestureBuilder> {
+    Box::new(LinearGestureBuilder::new())
+}
+
+#[no_mangle]
+pub extern "C" fn vb_gesture_builder_append(
+    vb: &mut LinearGestureBuilder,
+    val: f32,
+    num: u32,
+    den: u32,
+    bhvr: u16,
+) {
+    let b = behavior_from_integer(bhvr);
+
+    if b.is_ok() {
+        vb.append(GestureVertex {
+            val,
+            num,
+            den,
+            bhvr: b.unwrap(),
+        });
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn vb_gesture_tick(vb: &mut LinearGestureBuilder, clk: f32) -> f32 {
+    vb.tick(clk)
+}
+
+#[no_mangle]
+pub extern "C" fn vb_gesture_done(vb: &mut LinearGestureBuilder) {
+    vb.done()
+}
+
+#[no_mangle]
+pub extern "C" fn vb_gesture_free(vd: &mut LinearGestureBuilder) {
+    let ptr = unsafe { Box::from_raw(vd) };
+    drop(ptr);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
