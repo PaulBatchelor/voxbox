@@ -269,19 +269,20 @@ pub fn behavior_from_integer(bhvr: u16) -> Result<Behavior, u16> {
         1 => Ok(Behavior::Linear),
         2 => Ok(Behavior::GlissTiny),
         3 => Ok(Behavior::GlissSmall),
-        4 => Ok(Behavior::GlissLarge),
-        5 => Ok(Behavior::GlissHuge),
+        4 => Ok(Behavior::GlissMedium),
+        5 => Ok(Behavior::GlissLarge),
+        6 => Ok(Behavior::GlissHuge),
         _ => Err(bhvr),
     }
 }
 
 #[no_mangle]
-pub extern "C" fn vb_gesture_builder_new() -> Box<LinearGestureBuilder> {
+pub extern "C" fn vb_gesture_new() -> Box<LinearGestureBuilder> {
     Box::new(LinearGestureBuilder::new())
 }
 
 #[no_mangle]
-pub extern "C" fn vb_gesture_builder_append(
+pub extern "C" fn vb_gesture_append(
     vb: &mut LinearGestureBuilder,
     val: f32,
     num: u32,

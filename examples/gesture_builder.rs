@@ -53,10 +53,12 @@ fn main() {
 
     clk.set_freq(98.0 / 60.0);
 
-    let mut gst = LinearGestureBuilder::new();
+    //let mut gst = LinearGestureBuilder::new();
+    let mut gst = vb_gesture_new();
+    let gst = gst.as_mut();
 
     for vtx in gpath.into_iter() {
-        gst.append(vtx);
+        vb_gesture_append(gst, vtx.val, vtx.num, vtx.den, 4);
     }
 
     gst.done();
@@ -68,7 +70,7 @@ fn main() {
 
     for _ in 0..(sr as f32 * 10.0) as usize {
         let c = clk.tick();
-        let pitch = gst.tick(c);
+        let pitch = vb_gesture_tick(gst, c);
         voice.pitch = pitch;
         let out = voice.tick() * 0.5;
         let (rvb, _) = reverb.tick(out, out);
