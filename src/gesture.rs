@@ -234,3 +234,27 @@ impl<'a> LinearGestureBuilder<'a> {
         self.gesture.tick(clk)
     }
 }
+
+pub fn behavior_from_integer(bhvr: u16) -> Result<Behavior, u16> {
+    match bhvr {
+        0 => Ok(Behavior::Step),
+        1 => Ok(Behavior::Linear),
+        2 => Ok(Behavior::GlissTiny),
+        3 => Ok(Behavior::GlissSmall),
+        4 => Ok(Behavior::GlissLarge),
+        5 => Ok(Behavior::GlissHuge),
+        _ => Err(bhvr),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_behavior_from_integer() {
+        // Out of bounds error
+        let result = behavior_from_integer(9999).is_err();
+        assert_eq!(result, true);
+    }
+}
