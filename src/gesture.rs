@@ -28,9 +28,10 @@ pub struct LinearGesture<'a> {
     pos: usize,
 }
 
-pub struct LinearGestureBuilder<'a> {
-    gesture: LinearGesture<'a>,
+pub struct LinearGestureBuilder {
+    gest: Gesture<f32>,
     path: Vec<GestureVertex<f32>>,
+    pos: usize,
 }
 
 #[derive(Copy, Clone)]
@@ -209,11 +210,12 @@ impl SignalGenerator for LinearGesture<'_> {
     }
 }
 
-impl<'a> LinearGestureBuilder<'a> {
+impl LinearGestureBuilder {
     pub fn new() -> Self {
         let lgb = LinearGestureBuilder {
-            gesture: LinearGesture::new(),
+            gest: Gesture::new(),
             path: vec![],
+            pos: 0,
         };
 
         lgb
@@ -225,13 +227,39 @@ impl<'a> LinearGestureBuilder<'a> {
     }
 
     // To be called when path is done being populated with events
-    pub fn done(&'a mut self) {
-        self.gesture.init(&self.path);
+    pub fn done(&mut self) {
+        if self.path.len() > 0 {
+            let a = self.next_vertex();
+            self.update(&a);
+        }
+    }
+}
+
+impl SignalGenerator for LinearGestureBuilder {
+    fn next_vertex(&mut self) -> GestureVertex<f32> {
+        let x = &self.path;
+        let nxt = x[self.pos];
+        self.pos += 1;
+        if self.pos >= x.len() {
+            self.pos = 0;
+        }
+        nxt
     }
 
-    // create a sample of signal
-    pub fn tick(&mut self, clk: f32) -> f32 {
-        self.gesture.tick(clk)
+    fn compute_rephasor(&mut self, clk: f32) -> f32 {
+        self.gest.compute_rephasor(clk)
+    }
+
+    fn interpolate(&mut self, phs: f32) -> f32 {
+        self.gest.interpolate(phs)
+    }
+
+    fn new_period(&mut self, phs: f32) -> bool {
+        self.gest.new_period(phs)
+    }
+
+    fn update(&mut self, vtx: &GestureVertex<f32>) {
+        self.gest.update(vtx);
     }
 }
 
