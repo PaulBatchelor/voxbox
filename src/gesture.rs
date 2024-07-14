@@ -3,13 +3,13 @@ use crate::RePhasor;
 
 #[derive(Copy, Clone)]
 pub enum Behavior {
-   Step,
-   Linear,
-   GlissTiny,
-   GlissSmall,
-   GlissMedium,
-   GlissLarge,
-   GlissHuge,
+    Step,
+    Linear,
+    GlissTiny,
+    GlissSmall,
+    GlissMedium,
+    GlissLarge,
+    GlissHuge,
 }
 
 pub struct Gesture<T> {
@@ -24,9 +24,13 @@ pub struct Gesture<T> {
 
 pub struct LinearGesture<'a> {
     gest: Gesture<f32>,
-    //path: &'a [GestureVertex],
     path: Option<&'a Vec<GestureVertex<f32>>>,
     pos: usize,
+}
+
+pub struct LinearGestureBuilder<'a> {
+    gesture: LinearGesture<'a>,
+    path: Vec<GestureVertex<f32>>,
 }
 
 #[derive(Copy, Clone)]
@@ -54,7 +58,6 @@ pub trait SignalGenerator {
     fn update(&mut self, vtx: &GestureVertex<f32>);
 }
 
-
 impl SignalGenerator for Gesture<f32> {
     fn new_period(&mut self, phs: f32) -> bool {
         self.lphs > phs
@@ -62,21 +65,21 @@ impl SignalGenerator for Gesture<f32> {
 
     fn next_vertex(&mut self) -> GestureVertex<f32> {
         GestureVertex {
-            val: 0.0, num: 1, den: 1, bhvr: Behavior::Linear
+            val: 0.0,
+            num: 1,
+            den: 1,
+            bhvr: Behavior::Linear,
         }
     }
 
-    fn compute_rephasor(&mut self, clk: f32) -> f32
-    {
+    fn compute_rephasor(&mut self, clk: f32) -> f32 {
         self.rephasor.tick(clk)
     }
 
     fn interpolate(&mut self, phs: f32) -> f32 {
         let a = apply_behavior(phs, &self.behavior);
 
-        let out =
-            (1.0 - a)*self.prev +
-            a * self.next;
+        let out = (1.0 - a) * self.prev + a * self.next;
 
         self.lphs = phs;
 
@@ -95,7 +98,6 @@ impl SignalGenerator for Gesture<f32> {
         self.behavior = self.next_behavior;
         self.next_behavior = vtx.bhvr;
     }
-
 }
 
 impl Gesture<f32> {
@@ -131,44 +133,19 @@ fn gliss_it(phs: f32, glisspos: f32) -> f32 {
 
 fn apply_behavior(phs: f32, bhvr: &Behavior) -> f32 {
     let out = match bhvr {
-        Behavior::Step => {
-            0.0
-        },
-        Behavior::Linear => {
-            phs
-        },
-        Behavior::GlissMedium => {
-            gliss_it(phs, 0.75)
-        },
-        Behavior::GlissSmall => {
-            gliss_it(phs, 0.85)
-        },
-        Behavior::GlissLarge => {
-            gliss_it(phs, 0.5)
-        },
-        Behavior::GlissHuge => {
-            gliss_it(phs, 0.1)
-        },
-        Behavior::GlissTiny => {
-            gliss_it(phs, 0.9)
-        },
+        Behavior::Step => 0.0,
+        Behavior::Linear => phs,
+        Behavior::GlissMedium => gliss_it(phs, 0.75),
+        Behavior::GlissSmall => gliss_it(phs, 0.85),
+        Behavior::GlissLarge => gliss_it(phs, 0.5),
+        Behavior::GlissHuge => gliss_it(phs, 0.1),
+        Behavior::GlissTiny => gliss_it(phs, 0.9),
     };
 
     out
 }
 
 impl<'a> LinearGesture<'a> {
-    //pub fn new(path: &'a Vec<GestureVertex>) -> Self {
-    //    let mut lg = LinearGesture {
-    //        gest: Gesture::new(),
-    //        path: path,
-    //        pos: 0,
-    //    };
-
-    //    lg.init();
-
-    //    lg
-    //}
     pub fn new() -> Self {
         let lg = LinearGesture {
             gest: Gesture::new(),
@@ -203,13 +180,14 @@ impl SignalGenerator for LinearGesture<'_> {
                     self.pos = 0;
                 }
                 nxt
-            },
-
-            None => {
-                GestureVertex {
-                    val: 0.0, num: 1, den: 1, bhvr: Behavior::Linear
-                }
             }
+
+            None => GestureVertex {
+                val: 0.0,
+                num: 1,
+                den: 1,
+                bhvr: Behavior::Linear,
+            },
         };
         next
     }
@@ -229,5 +207,30 @@ impl SignalGenerator for LinearGesture<'_> {
     fn update(&mut self, vtx: &GestureVertex<f32>) {
         self.gest.update(vtx);
     }
+}
 
+impl<'a> LinearGestureBuilder<'a> {
+    pub fn new() -> Self {
+        let lgb = LinearGestureBuilder {
+            gesture: LinearGesture::new(),
+            path: vec![],
+        };
+
+        lgb
+    }
+
+    // Appends vertex to the path
+    pub fn append(&mut self, vtx: GestureVertex<f32>) {
+        self.path.push(vtx);
+    }
+
+    // To be called when path is done being populated with events
+    pub fn done(&'a mut self) {
+        self.gesture.init(&self.path);
+    }
+
+    // create a sample of signal
+    pub fn tick(&mut self, clk: f32) -> f32 {
+        self.gesture.tick(clk)
+    }
 }
