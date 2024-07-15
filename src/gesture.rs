@@ -54,7 +54,7 @@ struct GestureEventData {
 #[derive(Copy, Clone)]
 pub struct GestureEvent {
     evtype: GestureEventType,
-    data: Option<GestureEventData>,
+    data: GestureEventData,
 }
 
 const EVENT_QUEUE_SIZE: usize = 8;
@@ -373,7 +373,11 @@ impl GestureEventQueue {
     pub fn new() -> Self {
         let evt_default = GestureEvent {
             evtype: GestureEventType::EventNone,
-            data: None,
+            data: GestureEventData {
+                scalar: None,
+                rate: None,
+                behavior: None,
+            },
         };
         GestureEventQueue {
             queue: [evt_default; EVENT_QUEUE_SIZE],
@@ -383,65 +387,35 @@ impl GestureEventQueue {
         }
     }
 
-    pub fn enqueue(&mut self, evt: GestureEvent) {
+    pub fn enqueue_scalar(&mut self, scalar: f32) {
         if self.num_events >= EVENT_QUEUE_SIZE {
             panic!("Event overflow")
         }
 
-        self.queue[self.tail] = evt;
+        let evt = &mut self.queue[self.tail];
+
+        evt.evtype = GestureEventType::EventScalar;
+        evt.data.scalar = Some(scalar);
+        evt.data.behavior = None;
+        evt.data.rate = None;
 
         self.tail += 1;
         self.tail %= EVENT_QUEUE_SIZE;
         self.num_events += 1;
     }
 
-    pub fn dequeue(&mut self) -> GestureEvent {
+    pub fn dequeue(&mut self) -> &GestureEvent {
         if self.num_events <= 0 {
             panic!("event underflow")
         }
 
-        let evt = self.queue[self.head];
+        let evt = &self.queue[self.head];
 
         self.head += 1;
         self.head %= EVENT_QUEUE_SIZE;
         self.num_events -= 1;
 
         evt
-    }
-}
-
-impl GestureEvent {
-    pub fn scalar(val: f32) -> Self {
-        GestureEvent {
-            evtype: GestureEventType::EventScalar,
-            data: Some(GestureEventData {
-                scalar: Some(val),
-                behavior: None,
-                rate: None,
-            }),
-        }
-    }
-
-    pub fn behavior(bhvr: Behavior) -> Self {
-        GestureEvent {
-            evtype: GestureEventType::EventScalar,
-            data: Some(GestureEventData {
-                scalar: None,
-                behavior: Some(bhvr),
-                rate: None,
-            }),
-        }
-    }
-
-    pub fn rate(num: u32, den: u32) -> Self {
-        GestureEvent {
-            evtype: GestureEventType::EventRate,
-            data: Some(GestureEventData {
-                scalar: None,
-                behavior: None,
-                rate: Some([num, den]),
-            }),
-        }
     }
 }
 
@@ -475,8 +449,8 @@ mod tests {
     #[test]
     fn test_event_queue() {
         let mut queue = GestureEventQueue::new();
-        queue.enqueue(GestureEvent::scalar(123.0));
-        queue.enqueue(GestureEvent::scalar(456.0));
+        queue.enqueue_scalar(123.0);
+        queue.enqueue_scalar(456.0);
         assert_eq!(queue.num_events, 2);
 
         let evt1 = queue.dequeue();
@@ -486,27 +460,28 @@ mod tests {
         };
         assert!(result);
 
-        assert!(evt1.data.is_some());
+        assert!(evt1.data.scalar.is_some());
 
-        match evt1.data {
+        match evt1.data.scalar {
             Some(x) => {
-                assert_eq!(x.scalar, Some(123.0));
+                assert_eq!(x, 123.0);
             }
             _ => {}
         };
 
         assert_eq!(queue.num_events, 1);
         let evt2 = queue.dequeue();
+        assert!(evt2.data.scalar.is_some());
 
-        let result = match evt1.evtype {
+        let result = match evt2.evtype {
             GestureEventType::EventScalar => true,
             _ => false,
         };
         assert!(result);
 
-        match evt2.data {
+        match evt2.data.scalar {
             Some(x) => {
-                assert_eq!(x.scalar, Some(456.0));
+                assert_eq!(x, 456.0);
             }
             _ => {}
         };
