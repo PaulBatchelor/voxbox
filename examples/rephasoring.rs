@@ -1,6 +1,5 @@
-use voxbox::*;
 use std::f32::consts::PI;
-
+use voxbox::*;
 
 struct Voice {
     pub glot: Glot,
@@ -11,7 +10,7 @@ impl Voice {
     pub fn new(sr: usize, length: f32) -> Self {
         let mut v = Voice {
             glot: Glot::new(sr),
-            tract: Tract::new(sr, length, 2)
+            tract: Tract::new(sr, length, 2),
         };
         v.glot.set_shape(0.4);
         v.glot.set_aspiration(0.3);
@@ -56,60 +55,40 @@ fn main() {
 
     voice2.glot.set_shape(0.5);
 
-    let shape1 = [
-        1.32,
-        0.44,
-        0.463,
-        0.5,
-        1.44,
-        2.725,
-        2.868,
-        1.606
-    ];
+    let shape1 = [1.32, 0.44, 0.463, 0.5, 1.44, 2.725, 2.868, 1.606];
 
-    let shape2 = [
-        3.344,
-        0.44,
-        0.463,
-        0.5,
-        3.154,
-        3.225,
-        0.416,
-        0.463
-    ];
+    let shape2 = [3.344, 0.44, 0.463, 0.5, 3.154, 3.225, 0.416, 0.463];
 
-    let mut shape: [f32; 8]= [1.0; 8];
+    let mut shape: [f32; 8] = [1.0; 8];
 
     phasor.set_freq(1.0);
 
-    for n in 0..(sr as f32 * 20.0) as usize {
+    for _ in 0..(sr as f32 * 20.0) as usize {
         let phs = phasor.tick();
         rephasor.set_scale(3.0);
         let rephs = rephasor.tick(phs);
 
         // slowly morph between two tract shapes
         let shaping = phs;
-        for i in 0 .. 8 {
-            shape[i] = shaping * shape2[i] + (1.0 - shaping)*shape1[i];
+        for i in 0..8 {
+            shape[i] = shaping * shape2[i] + (1.0 - shaping) * shape1[i];
         }
 
         // apply drm and convert it to raw area functions
         voice1.tract.drm(&shape);
-        voice1.glot.set_freq(mtof(63. + 10.0*phs));
+        voice1.glot.set_freq(mtof(63. + 10.0 * phs));
 
         // slowly morph between two tract shapes
         let shaping = rephs;
-        for i in 0 .. 8 {
-            shape[i] = shaping * shape2[i] + (1.0 - shaping)*shape1[i];
+        for i in 0..8 {
+            shape[i] = shaping * shape2[i] + (1.0 - shaping) * shape1[i];
         }
 
         // apply drm and convert it to raw area functions
         voice2.tract.drm(&shape);
-        voice2.glot.set_freq(mtof(63. + 10.0*rephs - 4.0));
+        voice2.glot.set_freq(mtof(63. + 10.0 * rephs - 4.0));
 
-        let out =
-            voice1.tick() * 0.5 +
-            voice2.tick() * 0.5;
+        let out = voice1.tick() * 0.5 + voice2.tick() * 0.5;
         wav.tick(out);
     }
 }
