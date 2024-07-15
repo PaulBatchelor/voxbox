@@ -241,7 +241,8 @@ impl SignalGenerator for LinearGestureBuilder {
         let nxt = x[self.pos];
         self.pos += 1;
         if self.pos >= x.len() {
-            self.pos = 0;
+            // just hold at the end, don't loop back
+            self.pos = x.len() - 1;
         }
         nxt
     }
