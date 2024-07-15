@@ -35,6 +35,45 @@ pub struct LinearGestureBuilder {
 }
 
 #[derive(Copy, Clone)]
+enum GestureEventType {
+    EventNone,
+    EventScalar,
+    EventRate,
+    EventBehavior,
+}
+
+#[derive(Copy, Clone)]
+// TODO: converted this form a Union because unions are unsafe.
+// There may be a more efficient way to handle this?
+struct GestureEventData {
+    rate: Option<[u32; 2]>,
+    scalar: Option<f32>,
+    behavior: Option<Behavior>,
+}
+
+#[derive(Copy, Clone)]
+pub struct GestureEvent {
+    evtype: GestureEventType,
+    data: Option<GestureEventData>,
+}
+
+const EVENT_QUEUE_SIZE: usize = 8;
+
+#[allow(dead_code)]
+struct GestureEventQueue {
+    queue: [GestureEvent; EVENT_QUEUE_SIZE],
+    head: usize,
+    tail: usize,
+    num_events: usize,
+}
+
+#[allow(dead_code)]
+pub struct EventfulGesture {
+    gest: Gesture<f32>,
+    events: GestureEventQueue,
+}
+
+#[derive(Copy, Clone)]
 pub struct GestureVertex<T> {
     pub val: T,
     pub num: u32,
@@ -264,6 +303,33 @@ impl SignalGenerator for LinearGestureBuilder {
     }
 }
 
+impl SignalGenerator for EventfulGesture {
+    fn next_vertex(&mut self) -> GestureVertex<f32> {
+        GestureVertex {
+            val: 0.,
+            num: 1,
+            den: 1,
+            bhvr: Behavior::Linear,
+        }
+    }
+
+    fn compute_rephasor(&mut self, clk: f32) -> f32 {
+        self.gest.compute_rephasor(clk)
+    }
+
+    fn interpolate(&mut self, phs: f32) -> f32 {
+        self.gest.interpolate(phs)
+    }
+
+    fn new_period(&mut self, phs: f32) -> bool {
+        self.gest.new_period(phs)
+    }
+
+    fn update(&mut self, vtx: &GestureVertex<f32>) {
+        self.gest.update(vtx);
+    }
+}
+
 pub fn behavior_from_integer(bhvr: u16) -> Result<Behavior, u16> {
     match bhvr {
         0 => Ok(Behavior::Step),
@@ -302,6 +368,83 @@ pub extern "C" fn vb_gesture_append(
     }
 }
 
+#[allow(dead_code)]
+impl GestureEventQueue {
+    pub fn new() -> Self {
+        let evt_default = GestureEvent {
+            evtype: GestureEventType::EventNone,
+            data: None,
+        };
+        GestureEventQueue {
+            queue: [evt_default; EVENT_QUEUE_SIZE],
+            head: 0,
+            tail: 0,
+            num_events: 0,
+        }
+    }
+
+    pub fn enqueue(&mut self, evt: GestureEvent) {
+        if self.num_events >= EVENT_QUEUE_SIZE {
+            panic!("Event overflow")
+        }
+
+        self.queue[self.tail] = evt;
+
+        self.tail += 1;
+        self.tail %= EVENT_QUEUE_SIZE;
+        self.num_events += 1;
+    }
+
+    pub fn dequeue(&mut self) -> GestureEvent {
+        if self.num_events <= 0 {
+            panic!("event underflow")
+        }
+
+        let evt = self.queue[self.head];
+
+        self.head += 1;
+        self.head %= EVENT_QUEUE_SIZE;
+        self.num_events -= 1;
+
+        evt
+    }
+}
+
+impl GestureEvent {
+    pub fn scalar(val: f32) -> Self {
+        GestureEvent {
+            evtype: GestureEventType::EventScalar,
+            data: Some(GestureEventData {
+                scalar: Some(val),
+                behavior: None,
+                rate: None,
+            }),
+        }
+    }
+
+    pub fn behavior(bhvr: Behavior) -> Self {
+        GestureEvent {
+            evtype: GestureEventType::EventScalar,
+            data: Some(GestureEventData {
+                scalar: None,
+                behavior: Some(bhvr),
+                rate: None,
+            }),
+        }
+    }
+
+    pub fn rate(num: u32, den: u32) -> Self {
+        GestureEvent {
+            evtype: GestureEventType::EventRate,
+            data: Some(GestureEventData {
+                scalar: None,
+                behavior: None,
+                rate: Some([num, den]),
+            }),
+        }
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn vb_gesture_tick(vb: &mut LinearGestureBuilder, clk: f32) -> f32 {
     vb.tick(clk)
@@ -327,5 +470,47 @@ mod tests {
         // Out of bounds error
         let result = behavior_from_integer(9999).is_err();
         assert_eq!(result, true);
+    }
+
+    #[test]
+    fn test_event_queue() {
+        let mut queue = GestureEventQueue::new();
+        queue.enqueue(GestureEvent::scalar(123.0));
+        queue.enqueue(GestureEvent::scalar(456.0));
+        assert_eq!(queue.num_events, 2);
+
+        let evt1 = queue.dequeue();
+        let result = match evt1.evtype {
+            GestureEventType::EventScalar => true,
+            _ => false,
+        };
+        assert!(result);
+
+        assert!(evt1.data.is_some());
+
+        match evt1.data {
+            Some(x) => {
+                assert_eq!(x.scalar, Some(123.0));
+            }
+            _ => {}
+        };
+
+        assert_eq!(queue.num_events, 1);
+        let evt2 = queue.dequeue();
+
+        let result = match evt1.evtype {
+            GestureEventType::EventScalar => true,
+            _ => false,
+        };
+        assert!(result);
+
+        match evt2.data {
+            Some(x) => {
+                assert_eq!(x.scalar, Some(456.0));
+            }
+            _ => {}
+        };
+
+        assert_eq!(queue.num_events, 0);
     }
 }

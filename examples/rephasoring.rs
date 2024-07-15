@@ -48,7 +48,7 @@ fn main() {
     let mut voice1 = Voice::new(sr, 15.0);
     let mut voice2 = Voice::new(sr, 13.0);
 
-    let tpidsr = (2.0 * PI) / sr as f32;
+    let _tpidsr = (2.0 * PI) / sr as f32;
 
     let mut phasor = Phasor::new(sr, 0.0);
     let mut rephasor = RePhasor::new();
