@@ -36,10 +36,10 @@ pub struct LinearGestureBuilder {
 
 #[derive(Copy, Clone)]
 enum GestureEventType {
-    EventNone,
-    EventScalar,
-    EventRate,
-    EventBehavior,
+    None,
+    Scalar,
+    Rate,
+    Behavior,
 }
 
 #[derive(Copy, Clone)]
@@ -57,9 +57,8 @@ pub struct GestureEvent {
     data: GestureEventData,
 }
 
-const EVENT_QUEUE_SIZE: usize = 8;
+const EVENT_QUEUE_SIZE: usize = 16;
 
-#[allow(dead_code)]
 struct GestureEventQueue {
     queue: [GestureEvent; EVENT_QUEUE_SIZE],
     head: usize,
@@ -67,10 +66,10 @@ struct GestureEventQueue {
     num_events: usize,
 }
 
-#[allow(dead_code)]
 pub struct EventfulGesture {
     gest: Gesture<f32>,
     events: GestureEventQueue,
+    vtx: GestureVertex<f32>,
 }
 
 #[derive(Copy, Clone)]
@@ -96,6 +95,10 @@ pub trait SignalGenerator {
         self.interpolate(phs)
     }
     fn update(&mut self, vtx: &GestureVertex<f32>);
+    fn preinit(&mut self) {
+        let a = self.next_vertex();
+        self.update(&a);
+    }
 }
 
 impl SignalGenerator for Gesture<f32> {
@@ -303,33 +306,6 @@ impl SignalGenerator for LinearGestureBuilder {
     }
 }
 
-impl SignalGenerator for EventfulGesture {
-    fn next_vertex(&mut self) -> GestureVertex<f32> {
-        GestureVertex {
-            val: 0.,
-            num: 1,
-            den: 1,
-            bhvr: Behavior::Linear,
-        }
-    }
-
-    fn compute_rephasor(&mut self, clk: f32) -> f32 {
-        self.gest.compute_rephasor(clk)
-    }
-
-    fn interpolate(&mut self, phs: f32) -> f32 {
-        self.gest.interpolate(phs)
-    }
-
-    fn new_period(&mut self, phs: f32) -> bool {
-        self.gest.new_period(phs)
-    }
-
-    fn update(&mut self, vtx: &GestureVertex<f32>) {
-        self.gest.update(vtx);
-    }
-}
-
 pub fn behavior_from_integer(bhvr: u16) -> Result<Behavior, u16> {
     match bhvr {
         0 => Ok(Behavior::Step),
@@ -340,82 +316,6 @@ pub fn behavior_from_integer(bhvr: u16) -> Result<Behavior, u16> {
         5 => Ok(Behavior::GlissLarge),
         6 => Ok(Behavior::GlissHuge),
         _ => Err(bhvr),
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn vb_gesture_new() -> Box<LinearGestureBuilder> {
-    Box::new(LinearGestureBuilder::new())
-}
-
-#[no_mangle]
-pub extern "C" fn vb_gesture_append(
-    vb: &mut LinearGestureBuilder,
-    val: f32,
-    num: u32,
-    den: u32,
-    bhvr: u16,
-) {
-    let b = behavior_from_integer(bhvr);
-
-    if b.is_ok() {
-        vb.append(GestureVertex {
-            val,
-            num,
-            den,
-            bhvr: b.unwrap(),
-        });
-    }
-}
-
-#[allow(dead_code)]
-impl GestureEventQueue {
-    pub fn new() -> Self {
-        let evt_default = GestureEvent {
-            evtype: GestureEventType::EventNone,
-            data: GestureEventData {
-                scalar: None,
-                rate: None,
-                behavior: None,
-            },
-        };
-        GestureEventQueue {
-            queue: [evt_default; EVENT_QUEUE_SIZE],
-            head: 0,
-            tail: 0,
-            num_events: 0,
-        }
-    }
-
-    pub fn enqueue_scalar(&mut self, scalar: f32) {
-        if self.num_events >= EVENT_QUEUE_SIZE {
-            panic!("Event overflow")
-        }
-
-        let evt = &mut self.queue[self.tail];
-
-        evt.evtype = GestureEventType::EventScalar;
-        evt.data.scalar = Some(scalar);
-        evt.data.behavior = None;
-        evt.data.rate = None;
-
-        self.tail += 1;
-        self.tail %= EVENT_QUEUE_SIZE;
-        self.num_events += 1;
-    }
-
-    pub fn dequeue(&mut self) -> &GestureEvent {
-        if self.num_events == 0 {
-            panic!("event underflow")
-        }
-
-        let evt = &self.queue[self.head];
-
-        self.head += 1;
-        self.head %= EVENT_QUEUE_SIZE;
-        self.num_events -= 1;
-
-        evt
     }
 }
 
@@ -435,6 +335,189 @@ pub extern "C" fn vb_gesture_free(vd: &mut LinearGestureBuilder) {
     drop(ptr);
 }
 
+#[no_mangle]
+pub extern "C" fn vb_gesture_append(
+    vb: &mut LinearGestureBuilder,
+    val: f32,
+    num: u32,
+    den: u32,
+    bhvr: u16,
+) {
+    let b = behavior_from_integer(bhvr);
+
+    // TODO: Clippy is having a hard time with this expressoin...
+    if b.is_ok() {
+        vb.append(GestureVertex {
+            val,
+            num,
+            den,
+            bhvr: b.unwrap(),
+        });
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn vb_gesture_new() -> Box<LinearGestureBuilder> {
+    Box::new(LinearGestureBuilder::new())
+}
+
+impl SignalGenerator for EventfulGesture {
+    fn next_vertex(&mut self) -> GestureVertex<f32> {
+        let events = &mut self.events;
+
+        while events.has_events() {
+            let evt = events.dequeue();
+
+            match evt.evtype {
+                GestureEventType::Scalar => {
+                    self.vtx.val = evt.data.scalar.expect("no scalar found");
+                }
+                GestureEventType::Behavior => {
+                    self.vtx.bhvr = evt.data.behavior.expect("no behavior found");
+                }
+                GestureEventType::Rate => {
+                    let rate = evt.data.rate.expect("no rate found");
+                    self.vtx.num = rate[0];
+                    self.vtx.den = rate[1];
+                }
+                _ => {}
+            }
+        }
+        self.vtx
+    }
+
+    fn compute_rephasor(&mut self, clk: f32) -> f32 {
+        self.gest.compute_rephasor(clk)
+    }
+
+    fn interpolate(&mut self, phs: f32) -> f32 {
+        self.gest.interpolate(phs)
+    }
+
+    fn new_period(&mut self, phs: f32) -> bool {
+        self.gest.new_period(phs)
+    }
+
+    fn update(&mut self, vtx: &GestureVertex<f32>) {
+        self.gest.update(vtx);
+    }
+}
+
+impl Default for EventfulGesture {
+    fn default() -> Self {
+        EventfulGesture {
+            gest: Gesture::new(),
+            events: GestureEventQueue::new(),
+            vtx: GestureVertex {
+                val: 0.,
+                num: 1,
+                den: 1,
+                bhvr: Behavior::Linear,
+            },
+        }
+    }
+}
+
+impl EventfulGesture {
+    pub fn scalar(&mut self, scalar: f32) {
+        self.events.enqueue_scalar(scalar);
+    }
+    pub fn rate(&mut self, rate: [u32; 2]) {
+        self.events.enqueue_rate(rate[0], rate[1]);
+    }
+    pub fn behavior(&mut self, bhvr: Behavior) {
+        self.events.enqueue_behavior(bhvr);
+    }
+}
+
+impl GestureEventQueue {
+    pub fn new() -> Self {
+        let evt_default = GestureEvent {
+            evtype: GestureEventType::None,
+            data: GestureEventData {
+                scalar: None,
+                rate: None,
+                behavior: None,
+            },
+        };
+        GestureEventQueue {
+            queue: [evt_default; EVENT_QUEUE_SIZE],
+            head: 0,
+            tail: 0,
+            num_events: 0,
+        }
+    }
+
+    pub fn enqueue_scalar(&mut self, scalar: f32) {
+        let evt = self.enqueue();
+
+        evt.evtype = GestureEventType::Scalar;
+        evt.data.scalar = Some(scalar);
+        evt.data.behavior = None;
+        evt.data.rate = None;
+    }
+
+    pub fn enqueue_rate(&mut self, num: u32, den: u32) {
+        let evt = self.enqueue();
+
+        evt.evtype = GestureEventType::Rate;
+        evt.data.scalar = None;
+        evt.data.behavior = None;
+        evt.data.rate = Some([num, den]);
+    }
+
+    pub fn enqueue_behavior(&mut self, bhvr: Behavior) {
+        let evt = self.enqueue();
+
+        evt.evtype = GestureEventType::Behavior;
+        evt.data.scalar = None;
+        evt.data.behavior = Some(bhvr);
+        evt.data.rate = None;
+    }
+
+    /// Enques event and returns reference to it
+    pub fn enqueue(&mut self) -> &mut GestureEvent {
+        if self.num_events >= EVENT_QUEUE_SIZE {
+            panic!("Event overflow")
+        }
+        let evt = &mut self.queue[self.tail];
+
+        // initialize values to be nothing
+
+        evt.evtype = GestureEventType::None;
+        evt.data.scalar = None;
+        evt.data.behavior = None;
+        evt.data.behavior = None;
+        evt.data.rate = None;
+
+        self.tail += 1;
+        self.tail %= EVENT_QUEUE_SIZE;
+        self.num_events += 1;
+
+        evt
+    }
+
+    pub fn dequeue(&mut self) -> &GestureEvent {
+        if self.num_events == 0 {
+            panic!("event underflow")
+        }
+
+        let evt = &self.queue[self.head];
+
+        self.head += 1;
+        self.head %= EVENT_QUEUE_SIZE;
+        self.num_events -= 1;
+
+        evt
+    }
+
+    // TODO: will need to rethink this method when
+    // there are waits and delays
+    pub fn has_events(&self) -> bool {
+        self.num_events > 0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -443,7 +526,7 @@ mod tests {
     fn test_behavior_from_integer() {
         // Out of bounds error
         let result = behavior_from_integer(9999).is_err();
-        assert_eq!(result, true);
+        assert!(result);
     }
 
     #[test]
@@ -454,22 +537,11 @@ mod tests {
         assert_eq!(queue.num_events, 2);
 
         let evt1 = queue.dequeue();
-        // let result = match evt1.evtype {
-        //     GestureEventType::EventScalar => true,
-        //     _ => false,
-        // };
 
-        let result = matches!(evt1.evtype, GestureEventType::EventScalar);
+        let result = matches!(evt1.evtype, GestureEventType::Scalar);
         assert!(result);
 
         assert!(evt1.data.scalar.is_some());
-
-        // match evt1.data.scalar {
-        //     Some(x) => {
-        //         assert_eq!(x, 123.0);
-        //     }
-        //     _ => {}
-        // };
 
         if let Some(x) = evt1.data.scalar {
             assert_eq!(x, 123.0);
@@ -479,24 +551,28 @@ mod tests {
         let evt2 = queue.dequeue();
         assert!(evt2.data.scalar.is_some());
 
-        // let result = match evt2.evtype {
-        //     GestureEventType::EventScalar => true,
-        //     _ => false,
-        // };
-
-        let result = matches!(evt2.evtype, GestureEventType::EventScalar);
+        let result = matches!(evt2.evtype, GestureEventType::Scalar);
         assert!(result);
 
         if let Some(x) = evt2.data.scalar {
             assert_eq!(x, 456.0);
         }
-        // match evt2.data.scalar {
-        //     Some(x) => {
-        //         assert_eq!(x, 456.0);
-        //     }
-        //     _ => {}
-        // };
 
         assert_eq!(queue.num_events, 0);
+    }
+
+    #[test]
+    fn test_eventful_gesture() {
+        let mut evtgst = EventfulGesture::default();
+        evtgst.scalar(60.);
+        evtgst.rate([1, 1]);
+        evtgst.behavior(Behavior::Linear);
+
+        evtgst.preinit();
+        let x = evtgst.tick(0.);
+        let vtx = evtgst.vtx;
+
+        assert_eq!(vtx.val, 60.0, "vertex was not set");
+        assert_eq!(x, 60.0, "tick did not produce expected result");
     }
 }
