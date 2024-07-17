@@ -405,7 +405,7 @@ impl GestureEventQueue {
     }
 
     pub fn dequeue(&mut self) -> &GestureEvent {
-        if self.num_events <= 0 {
+        if self.num_events == 0 {
             panic!("event underflow")
         }
 
@@ -454,37 +454,48 @@ mod tests {
         assert_eq!(queue.num_events, 2);
 
         let evt1 = queue.dequeue();
-        let result = match evt1.evtype {
-            GestureEventType::EventScalar => true,
-            _ => false,
-        };
+        // let result = match evt1.evtype {
+        //     GestureEventType::EventScalar => true,
+        //     _ => false,
+        // };
+
+        let result = matches!(evt1.evtype, GestureEventType::EventScalar);
         assert!(result);
 
         assert!(evt1.data.scalar.is_some());
 
-        match evt1.data.scalar {
-            Some(x) => {
-                assert_eq!(x, 123.0);
-            }
-            _ => {}
-        };
+        // match evt1.data.scalar {
+        //     Some(x) => {
+        //         assert_eq!(x, 123.0);
+        //     }
+        //     _ => {}
+        // };
+
+        if let Some(x) = evt1.data.scalar {
+            assert_eq!(x, 123.0);
+        }
 
         assert_eq!(queue.num_events, 1);
         let evt2 = queue.dequeue();
         assert!(evt2.data.scalar.is_some());
 
-        let result = match evt2.evtype {
-            GestureEventType::EventScalar => true,
-            _ => false,
-        };
+        // let result = match evt2.evtype {
+        //     GestureEventType::EventScalar => true,
+        //     _ => false,
+        // };
+
+        let result = matches!(evt2.evtype, GestureEventType::EventScalar);
         assert!(result);
 
-        match evt2.data.scalar {
-            Some(x) => {
-                assert_eq!(x, 456.0);
-            }
-            _ => {}
-        };
+        if let Some(x) = evt2.data.scalar {
+            assert_eq!(x, 456.0);
+        }
+        // match evt2.data.scalar {
+        //     Some(x) => {
+        //         assert_eq!(x, 456.0);
+        //     }
+        //     _ => {}
+        // };
 
         assert_eq!(queue.num_events, 0);
     }
