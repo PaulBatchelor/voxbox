@@ -40,6 +40,7 @@ enum GestureEventType {
     Scalar,
     Rate,
     Behavior,
+    Wait,
 }
 
 #[derive(Copy, Clone)]
@@ -437,6 +438,9 @@ impl EventfulGesture {
     pub fn behavior(&mut self, bhvr: Behavior) {
         self.events.enqueue_behavior(bhvr);
     }
+    pub fn wait(&mut self, wait: u32) {
+        self.events.enqueue_wait(wait);
+    }
 }
 
 impl GestureEventQueue {
@@ -482,6 +486,15 @@ impl GestureEventQueue {
         evt.data.scalar = None;
         evt.data.behavior = Some(bhvr);
         evt.data.rate = None;
+    }
+
+    pub fn enqueue_wait(&mut self, wait: u32) {
+        let evt = self.enqueue();
+
+        evt.evtype = GestureEventType::Wait;
+        evt.data.scalar = None;
+        // HACK: re-use rate to store wait value
+        evt.data.rate = Some([wait, 0]);
     }
 
     /// Enques event and returns reference to it
@@ -575,14 +588,12 @@ mod tests {
         let mut evtgst = EventfulGesture::default();
         let mut phs = 0.;
         let inc = 0.1;
-        let mut t = 0;
         evtgst.scalar(60.);
         evtgst.rate([2, 3]);
         evtgst.behavior(Behavior::Linear);
 
         evtgst.preinit();
         let x = evtgst.tick(phs);
-        t += 1;
         let vtx = evtgst.vtx;
 
         assert_eq!(vtx.val, 60.0, "vertex was not set");
@@ -603,7 +614,6 @@ mod tests {
         evtgst.scalar(65.);
 
         evtgst.tick(phs);
-        t += 1;
         phs += inc;
 
         let prev = evtgst.gest.prev;
@@ -618,7 +628,6 @@ mod tests {
         // gesture is updated
         while running {
             evtgst.tick(phs);
-            t += 1;
             phs += inc;
             if phs > 1.0 {
                 phs -= 1.0;
@@ -639,5 +648,78 @@ mod tests {
         let next = evtgst.gest.next;
         assert_eq!(prev, 60.0, "wrong state value: prev");
         assert_eq!(next, 65.0, "wrong state value: next");
+    }
+    #[test]
+    fn test_wait_event() {
+        let mut evtgst = EventfulGesture::default();
+        let mut phs = 0.;
+        let inc = 0.1;
+
+        evtgst.scalar(60.);
+        evtgst.rate([1, 1]);
+        evtgst.behavior(Behavior::Linear);
+
+        evtgst.preinit();
+
+        // Start of Period A
+        println!("start of Period A");
+        let mut count = 0;
+        let mut running = true;
+        let mut lphs = -1.;
+
+        while running {
+            evtgst.tick(phs);
+            phs += inc;
+            if phs > 1.0 {
+                phs -= 1.0;
+            }
+            if lphs >= 0. && lphs > evtgst.gest.lphs {
+                // new period found check and see if event updated
+                running = false;
+            }
+            lphs = evtgst.gest.lphs;
+
+            count += 1;
+
+            if count == 1 {
+                evtgst.wait(1);
+                evtgst.scalar(65.);
+            }
+
+            assert!(count < 20, "probably an unbounded loop");
+        }
+
+        // Start of Period B
+        println!("start of Period B");
+        let mut count = 0;
+        let mut running = true;
+
+        // make sure next scalar didn't set to be 65
+        assert_ne!(
+            evtgst.gest.next, 65.0,
+            "Wait did not wait a period as it ought to."
+        );
+
+        while running {
+            evtgst.tick(phs);
+            phs += inc;
+            if phs > 1.0 {
+                phs -= 1.0;
+            }
+            if lphs >= 0. && lphs > evtgst.gest.lphs {
+                // new period found check and see if event updated
+                running = false;
+            }
+            lphs = evtgst.gest.lphs;
+            count += 1;
+
+            assert!(count < 20, "probably an unbounded loop");
+        }
+
+        // Start of Period C
+        assert_eq!(
+            evtgst.gest.next, 65.0,
+            "Expected scalar to have been set by now."
+        );
     }
 }
