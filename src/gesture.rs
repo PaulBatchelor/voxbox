@@ -71,6 +71,7 @@ pub struct EventfulGesture {
     gest: Gesture<f32>,
     events: GestureEventQueue,
     vtx: GestureVertex<f32>,
+    wait: u32,
 }
 
 #[derive(Copy, Clone)]
@@ -375,7 +376,7 @@ pub extern "C" fn vb_gesture_new() -> Box<LinearGestureBuilder> {
 impl SignalGenerator for EventfulGesture {
     fn next_vertex(&mut self) -> GestureVertex<f32> {
         let events = &mut self.events;
-        while events.has_events() {
+        while events.has_events() && self.wait == 0 {
             let evt = events.dequeue();
 
             match evt.evtype {
@@ -390,8 +391,19 @@ impl SignalGenerator for EventfulGesture {
                     self.vtx.num = rate[0];
                     self.vtx.den = rate[1];
                 }
+                GestureEventType::Wait => {
+                    // HACK: use rate to store data
+                    let wait = evt.data.rate.expect("no wait found");
+                    let wait = wait[0];
+
+                    self.wait = wait;
+                }
                 _ => {}
             }
+        }
+
+        if self.wait > 0 {
+            self.wait -= 1;
         }
         self.vtx
     }
@@ -424,6 +436,7 @@ impl Default for EventfulGesture {
                 den: 1,
                 bhvr: Behavior::Linear,
             },
+            wait: 0,
         }
     }
 }
@@ -533,8 +546,6 @@ impl GestureEventQueue {
         evt
     }
 
-    // TODO: will need to rethink this method when
-    // there are waits and delays
     pub fn has_events(&self) -> bool {
         self.num_events > 0
     }
@@ -649,6 +660,7 @@ mod tests {
         assert_eq!(prev, 60.0, "wrong state value: prev");
         assert_eq!(next, 65.0, "wrong state value: next");
     }
+
     #[test]
     fn test_wait_event() {
         let mut evtgst = EventfulGesture::default();
