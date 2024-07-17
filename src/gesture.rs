@@ -191,15 +191,19 @@ fn apply_behavior(phs: f32, bhvr: &Behavior) -> f32 {
     }
 }
 
+impl<'a> Default for LinearGesture<'a> {
+    fn default() -> Self {
+        LinearGesture::new()
+    }
+}
+
 impl<'a> LinearGesture<'a> {
     pub fn new() -> Self {
-        let lg = LinearGesture {
+        LinearGesture {
             gest: Gesture::new(),
             path: None,
             pos: 0,
-        };
-
-        lg
+        }
     }
 
     pub fn init(&mut self, path: &'a Vec<GestureVertex<f32>>) {
@@ -218,7 +222,7 @@ impl<'a> LinearGesture<'a> {
 
 impl SignalGenerator for LinearGesture<'_> {
     fn next_vertex(&mut self) -> GestureVertex<f32> {
-        let next = match self.path {
+        match self.path {
             Some(x) => {
                 let nxt = x[self.pos];
                 self.pos += 1;
@@ -234,8 +238,7 @@ impl SignalGenerator for LinearGesture<'_> {
                 den: 1,
                 bhvr: Behavior::Linear,
             },
-        };
-        next
+        }
     }
 
     fn compute_rephasor(&mut self, clk: f32) -> f32 {
@@ -255,15 +258,19 @@ impl SignalGenerator for LinearGesture<'_> {
     }
 }
 
+impl Default for LinearGestureBuilder {
+    fn default() -> Self {
+        LinearGestureBuilder::new()
+    }
+}
+
 impl LinearGestureBuilder {
     pub fn new() -> Self {
-        let lgb = LinearGestureBuilder {
+        LinearGestureBuilder {
             gest: Gesture::new(),
             path: vec![],
             pos: 0,
-        };
-
-        lgb
+        }
     }
 
     // Appends vertex to the path
@@ -273,7 +280,7 @@ impl LinearGestureBuilder {
 
     // To be called when path is done being populated with events
     pub fn done(&mut self) {
-        if self.path.len() > 0 {
+        if !self.path.is_empty() {
             let a = self.next_vertex();
             self.update(&a);
         }
