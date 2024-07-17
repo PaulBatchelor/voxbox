@@ -143,9 +143,15 @@ impl SignalGenerator for Gesture<f32> {
     }
 }
 
+impl Default for Gesture<f32> {
+    fn default() -> Self {
+        Gesture::<f32>::new()
+    }
+}
+
 impl Gesture<f32> {
     pub fn new() -> Self {
-        let g = Gesture {
+        Gesture {
             prev: 0.0,
             next: 0.0,
             ratemul: 1.0,
@@ -154,8 +160,7 @@ impl Gesture<f32> {
             rephasor: RePhasor::new(),
             // triggers update on init
             lphs: 1.0,
-        };
-        g
+        }
     }
 }
 
@@ -175,7 +180,7 @@ fn gliss_it(phs: f32, glisspos: f32) -> f32 {
 }
 
 fn apply_behavior(phs: f32, bhvr: &Behavior) -> f32 {
-    let out = match bhvr {
+    match bhvr {
         Behavior::Step => 0.0,
         Behavior::Linear => phs,
         Behavior::GlissMedium => gliss_it(phs, 0.75),
@@ -183,9 +188,7 @@ fn apply_behavior(phs: f32, bhvr: &Behavior) -> f32 {
         Behavior::GlissLarge => gliss_it(phs, 0.5),
         Behavior::GlissHuge => gliss_it(phs, 0.1),
         Behavior::GlissTiny => gliss_it(phs, 0.9),
-    };
-
-    out
+    }
 }
 
 impl<'a> LinearGesture<'a> {
@@ -364,7 +367,6 @@ pub extern "C" fn vb_gesture_new() -> Box<LinearGestureBuilder> {
 impl SignalGenerator for EventfulGesture {
     fn next_vertex(&mut self) -> GestureVertex<f32> {
         let events = &mut self.events;
-
         while events.has_events() {
             let evt = events.dequeue();
 
@@ -564,15 +566,71 @@ mod tests {
     #[test]
     fn test_eventful_gesture() {
         let mut evtgst = EventfulGesture::default();
+        let mut phs = 0.;
+        let inc = 0.1;
+        let mut t = 0;
         evtgst.scalar(60.);
-        evtgst.rate([1, 1]);
+        evtgst.rate([2, 3]);
         evtgst.behavior(Behavior::Linear);
 
         evtgst.preinit();
-        let x = evtgst.tick(0.);
+        let x = evtgst.tick(phs);
+        t += 1;
         let vtx = evtgst.vtx;
 
         assert_eq!(vtx.val, 60.0, "vertex was not set");
         assert_eq!(x, 60.0, "tick did not produce expected result");
+
+        assert!(matches!(vtx.bhvr, Behavior::Linear), "wrong behavior found");
+        assert_eq!(vtx.num, 2, "invalid rate: numerator");
+        assert_eq!(vtx.den, 3, "invalid rate: denominator");
+        // gesture states should match, since the internal
+        // vertex has not yet been updated
+
+        let prev = evtgst.gest.prev;
+        let next = evtgst.gest.next;
+        assert_eq!(prev, next, "states do not match");
+
+        phs += inc;
+
+        evtgst.scalar(65.);
+
+        evtgst.tick(phs);
+        t += 1;
+        phs += inc;
+
+        let prev = evtgst.gest.prev;
+        let next = evtgst.gest.next;
+        assert_eq!(prev, next, "states do not match after first tick");
+
+        let mut running = true;
+        let mut lphs = evtgst.gest.lphs;
+        let mut count = 0;
+
+        // Wait until next period, then make sure
+        // gesture is updated
+        while running {
+            evtgst.tick(phs);
+            t += 1;
+            phs += inc;
+            if phs > 1.0 {
+                phs -= 1.0;
+            }
+            if lphs > evtgst.gest.lphs {
+                // new period found check and see if event updated
+                running = false;
+            }
+            lphs = evtgst.gest.lphs;
+            count += 1;
+
+            assert!(count < 20, "probably an unbounded loop");
+        }
+
+        assert_eq!(count, 14, "wrong sample count");
+
+        let prev = evtgst.gest.prev;
+        let next = evtgst.gest.next;
+        assert_eq!(prev, 60.0, "wrong state value: prev");
+        assert_eq!(next, 65.0, "wrong state value: next");
     }
 }
