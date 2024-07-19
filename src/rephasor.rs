@@ -96,20 +96,6 @@ impl RePhasor {
 
         out
     }
-
-    pub fn reset(&mut self) {
-        //self.process_ext = false;
-        for i in 1..2 {
-            self.pc[i] = 0.;
-            self.pe[i] = 0.;
-        }
-        self.c = 1.0;
-        self.s = 1.0;
-        self.si = 1.0;
-        self.pr = 0.0;
-        self.ir = 0.0;
-        self.ic = 0.0;
-    }
 }
 
 // truncated phasor
@@ -129,6 +115,11 @@ mod tests {
     use super::*;
 
     #[test]
+    /// Initially I made this test because I
+    /// expected huge jumps with sudden phasor
+    /// resets. It turns out, it actually might
+    /// be resilient against this kind of phasor
+    /// reset.
     pub fn test_reset() {
         let sr = 44100;
         let mut rephasor = RePhasor::new();
@@ -148,7 +139,6 @@ mod tests {
             // reset halfway through period 2
             if count == 2 && phs > 0.5 {
                 psig = 0.;
-                rephasor.reset();
                 count += 1;
             }
 
@@ -159,7 +149,7 @@ mod tests {
             if lpsig >= 0. {
                 let rp_delta = rephasor.s * rephasor.ir * rephasor.c;
                 let diff = (rp_delta - phs_inc).abs();
-                assert!(diff < 0.001, "RePhasor did not handle reset properly");
+                assert!(diff < 0.00001, "RePhasor did not handle reset properly");
             }
 
             // compare delta increment values
