@@ -36,6 +36,9 @@ impl Phasor {
         out
     }
 
+    pub fn reset(&mut self) {
+        self.phs = 0.;
+    }
 }
 
 pub struct PhasorTrig {
@@ -44,24 +47,17 @@ pub struct PhasorTrig {
 
 impl PhasorTrig {
     pub fn new() -> Self {
-        PhasorTrig {
-            lphs: -1.0,
-        }
+        PhasorTrig { lphs: -1.0 }
     }
 
     pub fn tick(&mut self, phs: f32) -> f32 {
         let lphs = self.lphs;
-        let out = if lphs < 0.0 || lphs > phs {
-            1.0
-        }  else {
-            0.0
-        };
+        let out = if lphs < 0.0 || lphs > phs { 1.0 } else { 0.0 };
 
         self.lphs = phs;
 
         out
     }
-
 }
 
 pub struct Metro {
