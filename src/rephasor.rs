@@ -9,7 +9,13 @@ pub struct RePhasor {
     si: f32,
 
     ir: f32,
-    ic: f32
+    ic: f32,
+}
+
+impl Default for RePhasor {
+    fn default() -> Self {
+        RePhasor::new()
+    }
 }
 
 impl RePhasor {
@@ -36,9 +42,8 @@ impl RePhasor {
     // truncated phasor
 
     pub fn tick(&mut self, ext: f32) -> f32 {
-       
         // delta function of theta_e
-        
+
         if ext > self.pe[0] {
             self.ir = ext - self.pe[0];
         }
@@ -54,7 +59,7 @@ impl RePhasor {
 
         // compute rephasor theta_c
 
-        let pc = phasor(self.pc[0], self.si*self.ic);
+        let pc = phasor(self.pc[0], self.si * self.ic);
 
         // compute correction coefficient
         if self.pc[1] != 0.0 {
@@ -77,7 +82,6 @@ impl RePhasor {
 
         out
     }
-
 }
 
 fn phasor(phs: f32, inc: f32) -> f32 {
@@ -90,3 +94,49 @@ fn phasor(phs: f32, inc: f32) -> f32 {
     phs
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn test_reset() {
+        let sr = 44100;
+        let mut rephasor = RePhasor::new();
+
+        let mut lpsig = -1.0;
+        let mut count = 0;
+        let mut phs = 0.;
+        let phs_inc = 440. / sr as f32;
+
+        for _ in 1..sr * 5 {
+            let mut psig = phasor(phs, phs_inc);
+
+            if lpsig >= 0. && lpsig > psig {
+                count += 1;
+            }
+
+            // reset halfway through period 2
+            if count == 2 && phs > 0.5 {
+                // TODO: reset period
+                psig = 0.;
+            }
+
+            rephasor.tick(psig);
+
+            // Compare delta times of phasor/rephasor
+            // They should approximtely match
+            if lpsig >= 0. {
+                let rp_delta = rephasor.s * rephasor.ir * rephasor.c;
+                assert!(
+                    (rp_delta - phs_inc).abs() < 0.001,
+                    "RePhasor did not handle reset properly"
+                );
+            }
+
+            // compare delta increment values
+
+            phs = psig;
+            lpsig = psig;
+        }
+    }
+}
