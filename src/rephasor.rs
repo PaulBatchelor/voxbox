@@ -1,14 +1,27 @@
 pub struct RePhasor {
-    // These were once math constants... I think.
-    // I copied them over from the sndkit implementation
+    // main phasor state
     pr: f32,
+
+    // last two 2 samples from correction phasor
     pc: [f32; 2],
+
+    // last 2 samples from external phasor
     pe: [f32; 2],
+
+    /// c: "course correction"
     c: f32,
+
+    /// s: scaling amount for rephasor
     s: f32,
+
+    /// si: inverse scale, or 1/s.
     si: f32,
 
+    /// ir: increment amount of rephasor
     ir: f32,
+
+    /// ic: increment amount for correction
+    /// rephasor
     ic: f32,
 }
 
@@ -39,11 +52,9 @@ impl RePhasor {
         }
     }
 
-    // truncated phasor
-
     pub fn tick(&mut self, ext: f32) -> f32 {
-        // delta function of theta_e
-
+        // compute increment of rephasor if it
+        // is not the start of a new period
         if ext > self.pe[0] {
             self.ir = ext - self.pe[0];
         }
@@ -51,17 +62,20 @@ impl RePhasor {
         // compute main rephasor theta_r
         let pr = phasor(self.pr, self.s * self.ir * self.c);
 
-        // delta function of theta_r
-
+        // Create a "correction" rephasor. Feed
+        // the output of the main into another
+        // rephasor and undo the scaling.
         if pr > self.pr {
             self.ic = pr - self.pr;
         }
 
-        // compute rephasor theta_c
-
+        // compute correction phasor
         let pc = phasor(self.pc[0], self.si * self.ic);
 
         // compute correction coefficient
+        // Measure differences between the the
+        // external phasor and the correction
+        // phasor.
         if self.pc[1] != 0.0 {
             self.c = self.pe[1] / self.pc[1];
         }
@@ -82,7 +96,23 @@ impl RePhasor {
 
         out
     }
+
+    pub fn reset(&mut self) {
+        //self.process_ext = false;
+        for i in 1..2 {
+            self.pc[i] = 0.;
+            self.pe[i] = 0.;
+        }
+        self.c = 1.0;
+        self.s = 1.0;
+        self.si = 1.0;
+        self.pr = 0.0;
+        self.ir = 0.0;
+        self.ic = 0.0;
+    }
 }
+
+// truncated phasor
 
 fn phasor(phs: f32, inc: f32) -> f32 {
     let phs = phs + inc;
@@ -117,8 +147,9 @@ mod tests {
 
             // reset halfway through period 2
             if count == 2 && phs > 0.5 {
-                // TODO: reset period
                 psig = 0.;
+                rephasor.reset();
+                count += 1;
             }
 
             rephasor.tick(psig);
@@ -127,10 +158,8 @@ mod tests {
             // They should approximtely match
             if lpsig >= 0. {
                 let rp_delta = rephasor.s * rephasor.ir * rephasor.c;
-                assert!(
-                    (rp_delta - phs_inc).abs() < 0.001,
-                    "RePhasor did not handle reset properly"
-                );
+                let diff = (rp_delta - phs_inc).abs();
+                assert!(diff < 0.001, "RePhasor did not handle reset properly");
             }
 
             // compare delta increment values
