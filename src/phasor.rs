@@ -45,6 +45,12 @@ pub struct PhasorTrig {
     lphs: f32,
 }
 
+impl Default for PhasorTrig {
+    fn default() -> Self {
+        PhasorTrig::new()
+    }
+}
+
 impl PhasorTrig {
     pub fn new() -> Self {
         PhasorTrig { lphs: -1.0 }
