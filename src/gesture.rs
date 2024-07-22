@@ -454,6 +454,17 @@ impl EventfulGesture {
     pub fn wait(&mut self, wait: u32) {
         self.events.enqueue_wait(wait);
     }
+
+    pub fn immediate(&mut self, value: f32) {
+        self.gest.next = value;
+        self.gest.prev = value;
+        self.vtx.val = value;
+        self.events.clear_events();
+    }
+
+    pub fn clear(&mut self) {
+        self.events.clear_events();
+    }
 }
 
 impl GestureEventQueue {
@@ -548,6 +559,10 @@ impl GestureEventQueue {
 
     pub fn has_events(&self) -> bool {
         self.num_events > 0
+    }
+
+    pub fn clear_events(&mut self) {
+        self.num_events = 0;
     }
 }
 
