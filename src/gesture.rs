@@ -563,6 +563,8 @@ impl GestureEventQueue {
 
     pub fn clear_events(&mut self) {
         self.num_events = 0;
+        self.head = 0;
+        self.tail = 0;
     }
 }
 
