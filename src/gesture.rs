@@ -10,6 +10,9 @@ pub enum Behavior {
     GlissMedium,
     GlissLarge,
     GlissHuge,
+    Zero,
+    One,
+    Gate,
 }
 
 pub struct Gesture<T> {
@@ -19,6 +22,7 @@ pub struct Gesture<T> {
     behavior: Behavior,
     rephasor: RePhasor,
     lphs: T,
+    lalpha: T,
     next_behavior: Behavior,
 }
 
@@ -32,6 +36,8 @@ pub struct LinearGestureBuilder {
     gest: Gesture<f32>,
     path: Vec<GestureVertex<f32>>,
     pos: usize,
+    loopit: bool,
+    alpha_only: bool,
 }
 
 #[derive(Copy, Clone)]
@@ -127,6 +133,7 @@ impl SignalGenerator for Gesture<f32> {
         let out = (1.0 - a) * self.prev + a * self.next;
 
         self.lphs = phs;
+        self.lalpha = a;
 
         out
     }
@@ -162,6 +169,7 @@ impl Gesture<f32> {
             rephasor: RePhasor::new(),
             // triggers update on init
             lphs: 1.0,
+            lalpha: 0.0,
         }
     }
 }
@@ -190,6 +198,15 @@ fn apply_behavior(phs: f32, bhvr: &Behavior) -> f32 {
         Behavior::GlissLarge => gliss_it(phs, 0.5),
         Behavior::GlissHuge => gliss_it(phs, 0.1),
         Behavior::GlissTiny => gliss_it(phs, 0.9),
+        Behavior::Zero => 0.0,
+        Behavior::One => 0.0,
+        Behavior::Gate => {
+            if phs > 0.5 {
+                0.
+            } else {
+                1.
+            }
+        }
     }
 }
 
@@ -272,6 +289,8 @@ impl LinearGestureBuilder {
             gest: Gesture::new(),
             path: vec![],
             pos: 0,
+            loopit: false,
+            alpha_only: false,
         }
     }
 
@@ -296,7 +315,11 @@ impl SignalGenerator for LinearGestureBuilder {
         self.pos += 1;
         if self.pos >= x.len() {
             // just hold at the end, don't loop back
-            self.pos = x.len() - 1;
+            if self.loopit {
+                self.pos = 0;
+            } else {
+                self.pos = x.len() - 1;
+            }
         }
         nxt
     }
@@ -316,6 +339,31 @@ impl SignalGenerator for LinearGestureBuilder {
     fn update(&mut self, vtx: &GestureVertex<f32>) {
         self.gest.update(vtx);
     }
+
+    // fn tick(&mut self, clk: f32) -> f32 {
+    //     let out = self.gest.tick(clk);
+
+    //     if self.alpha_only {
+    //         return self.gest.lalpha;
+    //     }
+
+    //     out
+    // }
+    fn tick(&mut self, clk: f32) -> f32 {
+        let phs = self.compute_rephasor(clk);
+
+        if self.new_period(phs) {
+            let vtx = self.next_vertex();
+            self.update(&vtx);
+        }
+        let out = self.interpolate(phs);
+
+        if self.alpha_only {
+            return self.gest.lalpha;
+        }
+
+        out
+    }
 }
 
 pub fn behavior_from_integer(bhvr: u16) -> Result<Behavior, u16> {
@@ -327,6 +375,9 @@ pub fn behavior_from_integer(bhvr: u16) -> Result<Behavior, u16> {
         4 => Ok(Behavior::GlissMedium),
         5 => Ok(Behavior::GlissLarge),
         6 => Ok(Behavior::GlissHuge),
+        7 => Ok(Behavior::Zero),
+        8 => Ok(Behavior::One),
+        9 => Ok(Behavior::Gate),
         _ => Err(bhvr),
     }
 }
@@ -371,6 +422,16 @@ pub extern "C" fn vb_gesture_append(
 #[no_mangle]
 pub extern "C" fn vb_gesture_new() -> Box<LinearGestureBuilder> {
     Box::new(LinearGestureBuilder::new())
+}
+
+#[no_mangle]
+pub extern "C" fn vb_gesture_loop(vb: &mut LinearGestureBuilder) {
+    vb.loopit = true;
+}
+
+#[no_mangle]
+pub extern "C" fn vb_gesture_alpha(vb: &mut LinearGestureBuilder) {
+    vb.alpha_only = true;
 }
 
 impl SignalGenerator for EventfulGesture {
