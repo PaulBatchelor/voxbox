@@ -13,6 +13,7 @@ mod smoother;
 mod tgate;
 mod tract;
 mod voice;
+mod delay;
 
 pub use bigverb::*;
 pub use butterworth::*;
@@ -29,3 +30,4 @@ pub use smoother::*;
 pub use tgate::*;
 pub use tract::*;
 pub use voice::*;
+pub use delay::*;
