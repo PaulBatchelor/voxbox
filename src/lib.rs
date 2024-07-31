@@ -1,6 +1,8 @@
+mod balloon;
 mod bigverb;
 mod butterworth;
 mod dcblocker;
+mod delay;
 mod envelope;
 mod gesture;
 mod glot;
@@ -13,11 +15,12 @@ mod smoother;
 mod tgate;
 mod tract;
 mod voice;
-mod delay;
 
+pub use balloon::*;
 pub use bigverb::*;
 pub use butterworth::*;
 pub use dcblocker::*;
+pub use delay::*;
 pub use envelope::*;
 pub use gesture::*;
 pub use glot::*;
@@ -30,4 +33,3 @@ pub use smoother::*;
 pub use tgate::*;
 pub use tract::*;
 pub use voice::*;
-pub use delay::*;
