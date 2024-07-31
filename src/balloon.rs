@@ -1,5 +1,5 @@
 pub struct Balloon {
-    pressure: f32,
+    pub pressure: f32,
     pub deflation: f32,
     pub inflation: f32,
     p_deflation: f32,
@@ -65,6 +65,8 @@ impl Balloon {
 
         // pressure is a scalar that determines the overall rate
 
+        let out = self.volume;
+
         let mut inflate = 1.0 - self.inflate;
         inflate *= self.pressure;
 
@@ -81,6 +83,7 @@ impl Balloon {
             vol = 1.0;
         }
 
-        vol
+        self.volume = vol;
+        out
     }
 }
