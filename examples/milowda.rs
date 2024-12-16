@@ -4,8 +4,7 @@ fn db2lin(db: f32) -> f32 {
     (10.0_f32).powf(db / 20.)
 }
 
-fn pitch_gestures(chords: &[[i16;4]]) -> Vec<Vec<GestureVertex>>
-{
+fn pitch_gestures(chords: &[[i16; 4]]) -> Vec<Vec<GestureVertex<f32>>> {
     let mut sop = vec![];
     let mut alt = vec![];
     let mut ten = vec![];
@@ -17,28 +16,28 @@ fn pitch_gestures(chords: &[[i16;4]]) -> Vec<Vec<GestureVertex>>
             val: chord[0] as f32,
             num: 1,
             den: 4,
-            bhvr: Behavior::GlissMedium
+            bhvr: Behavior::GlissMedium,
         });
 
         ten.push(GestureVertex {
             val: chord[1] as f32,
             num: 1,
             den: 4,
-            bhvr: Behavior::GlissMedium
+            bhvr: Behavior::GlissMedium,
         });
 
         alt.push(GestureVertex {
             val: chord[2] as f32,
             num: 1,
             den: 4,
-            bhvr: Behavior::GlissMedium
+            bhvr: Behavior::GlissMedium,
         });
 
         sop.push(GestureVertex {
             val: chord[3] as f32,
             num: 1,
             den: 4,
-            bhvr: Behavior::GlissMedium
+            bhvr: Behavior::GlissMedium,
         });
     }
 
@@ -124,49 +123,14 @@ fn main() {
         // 2.059,
         // 0.297,
         // 1.392
-
-        0.768,
-        0.5,
-        0.5,
-        0.5,
-        1.454,
-        3.368,
-        3.082,
-        2.74
+        0.768, 0.5, 0.5, 0.5, 1.454, 3.368, 3.082, 2.74,
     ];
 
-    let shape_ah_sop = [
-        1.773,
-        0.225,
-        0.392,
-        0.5,
-        1.868,
-        1.987,
-        0.392,
-        3.249
-    ];
+    let shape_ah_sop = [1.773, 0.225, 0.392, 0.5, 1.868, 1.987, 0.392, 3.249];
 
-    let shape_ah_tenor = [
-        0.225,
-        0.059,
-        0.059,
-        0.082,
-        0.701,
-        3.701,
-        1.725,
-        1.082
-    ];
+    let shape_ah_tenor = [0.225, 0.059, 0.059, 0.082, 0.701, 3.701, 1.725, 1.082];
 
-    let shape_ah_bass = [
-        0.225,
-        0.63,
-        0.844,
-        0.5,
-        0.5,
-        3.701,
-        0.82,
-        2.106
-    ];
+    let shape_ah_bass = [0.225, 0.63, 0.844, 0.5, 0.5, 3.701, 0.82, 2.106];
 
     tenor.tract.drm(&shape_ah_tenor);
     //tenor.glottis.set_pitch((base_pitch + chord[1] - 12) as f32);
@@ -208,7 +172,7 @@ fn main() {
     let mut hp2 = ButterworthHighPass::new(sr);
     hp1.set_freq(300.);
 
-    for _ in 0 .. (sr as f32 * 50.0) as usize {
+    for _ in 0..(sr as f32 * 50.0) as usize {
         let phs = clk.tick();
 
         let pitch = gst_sop.tick(phs);

@@ -125,8 +125,8 @@ impl ChatterBox {
 
         let ev = env.tick(gt);
 
-        //let out = voice.tick() * 0.5 * ev;
-        let out = voice.tick() * 0.5;
+        let out = voice.tick() * 0.5 * ev;
+        //let out = voice.tick() * 0.5;
         *pphs = phs;
         *pgate = *gate;
         out

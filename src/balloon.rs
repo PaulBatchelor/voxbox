@@ -83,6 +83,8 @@ impl Balloon {
             vol = 1.0;
         }
 
+        vol *= self.deflate;
+
         self.volume = vol;
         out
     }
